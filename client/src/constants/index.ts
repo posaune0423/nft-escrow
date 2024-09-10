@@ -1,1 +1,1 @@
-export const APP_NAME = "NFT Trade";
+export const APP_NAME = "エスクロー";

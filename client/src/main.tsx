@@ -3,8 +3,8 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { App } from "./app";
-import { Trade } from "./app/trade";
+import { TopPage } from "./app";
+import { TradePage } from "./app/trade";
 import { getDefaultConfig, RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { mainnet, polygon, optimism, arbitrum, base } from "wagmi/chains";
@@ -14,11 +14,11 @@ import { APP_NAME } from "./constants";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <TopPage />,
   },
   {
     path: "/trade",
-    element: <Trade />,
+    element: <TradePage />,
   },
 ]);
 

@@ -1,73 +1,119 @@
-import { Layout } from "@/components/Layout";
 import { useAccount, useChainId } from "wagmi";
 import { Alchemy, OwnedNft } from "alchemy-sdk";
 import { useEffect, useMemo, useState } from "react";
 import { getNetworkFromChainId } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Clipboard, Check } from "lucide-react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { Layout } from "@/components/Layout";
 
-const Step1 = ({ nfts, selectMyNft }: { nfts: OwnedNft[]; selectMyNft: (nft: OwnedNft) => void }) => {
+const StepFlow = ({ currentStep }: { currentStep: number }) => {
+  const steps = ["自分のNFT選択", "交換NFT選択", "確認", "取引リンク"];
   return (
-    <main className="flex flex-col min-h-[100dvh]">
-      <div className="flex flex-col items-center justify-center h-full px-4 space-y-4">
-        <h1 className="text-3xl font-bold">自分のNFTを選択してください</h1>
-        <div className="grid grid-cols-2 gap-4 items-center justify-center h-full">
+    <div className="flex justify-between items-center w-full max-w-3xl mx-auto mb-8 px-4">
+      {steps.map((step, index) => (
+        <div key={index} className="flex flex-col items-center">
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              index + 1 <= currentStep ? "bg-primary text-white" : "bg-gray-200 text-gray-500"
+            }`}
+          >
+            {index + 1}
+          </div>
+          <span className="text-xs mt-1">{step}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const Step1 = ({
+  nfts,
+  selectMyNft,
+  address,
+}: {
+  nfts: OwnedNft[];
+  selectMyNft: (nft: OwnedNft) => void;
+  address: string | undefined;
+}) => {
+  if (!address) {
+    return (
+      <div className="flex flex-col items-center justify-center px-4 space-y-4">
+        <h2 className="text-2xl font-bold">ウォレットを接続してください</h2>
+        <ConnectButton />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center px-4 space-y-4">
+      <h2 className="text-2xl font-bold">自分のNFTを選択してください</h2>
+      {nfts.length === 0 ? (
+        <p>NFTを読み込んでいます...</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-3xl">
           {nfts.map((nft) => (
-            <div key={nft.tokenId} className="flex justify-center" onClick={() => selectMyNft(nft)}>
+            <div
+              key={nft.tokenId}
+              className="flex justify-center cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => selectMyNft(nft)}
+            >
               <img
                 src={nft.image.cachedUrl ?? nft.image.thumbnailUrl}
                 alt={nft.tokenId}
-                className="max-w-full h-auto"
+                className="w-full h-auto rounded-lg shadow-md"
               />
             </div>
           ))}
         </div>
-      </div>
-    </main>
+      )}
+    </div>
   );
 };
 
 const Step2 = ({ nfts, selectTradeNft }: { nfts: OwnedNft[]; selectTradeNft: (nft: OwnedNft) => void }) => {
   return (
-    <main className="flex flex-col min-h-[100dvh]">
-      <div className="flex flex-col items-center justify-center h-full px-4 space-y-4">
-        <h1 className="text-3xl font-bold">交換するNFTを選択してください</h1>
-        <div className="grid grid-cols-2 gap-4 items-center justify-center h-full">
-          {nfts.map((nft) => (
-            <div key={nft.tokenId} className="flex justify-center" onClick={() => selectTradeNft(nft)}>
-              <img
-                src={nft.image.cachedUrl ?? nft.image.thumbnailUrl}
-                alt={nft.tokenId}
-                className="max-w-full h-auto"
-              />
-            </div>
-          ))}
-        </div>
+    <div className="flex flex-col items-center justify-center px-4 space-y-4">
+      <h2 className="text-2xl font-bold">交換するNFTを選択してください</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-3xl">
+        {nfts.map((nft) => (
+          <div
+            key={nft.tokenId}
+            className="flex justify-center cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => selectTradeNft(nft)}
+          >
+            <img
+              src={nft.image.cachedUrl ?? nft.image.thumbnailUrl}
+              alt={nft.tokenId}
+              className="w-full h-auto rounded-lg shadow-md"
+            />
+          </div>
+        ))}
       </div>
-    </main>
+    </div>
   );
 };
 
 const Step3 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (step: number) => void }) => {
   return (
-    <main className="flex flex-col min-h-[calc(100dvh-160px)] space-y-4">
-      <div className="flex items-center justify-around px-4 h-28">
-        {selectedNfts.map((nft) => (
-          <div key={nft.tokenId} className="flex items-center justify-around h-full">
+    <div className="flex flex-col items-center justify-center px-4 space-y-8 w-full max-w-3xl mx-auto">
+      <h2 className="text-2xl font-bold">選択したNFTの確認</h2>
+      <div className="flex justify-around w-full">
+        {selectedNfts.map((nft, index) => (
+          <div key={nft.tokenId} className="flex flex-col items-center">
             <img
               src={nft.image.cachedUrl ?? nft.image.thumbnailUrl}
               alt={nft.tokenId}
-              className="max-w-full max-h-full object-contain"
+              className="w-32 h-32 object-cover rounded-lg shadow-md"
             />
+            <span className="mt-2 text-sm font-semibold">{index === 0 ? "自分のNFT" : "交換NFT"}</span>
           </div>
         ))}
       </div>
-      <div className="flex items-center justify-center h-full px-4">
-        <Button onClick={() => setStep(4)} className="w-full h-10">
-          取引の作成
-        </Button>
-      </div>
-    </main>
+      <Button onClick={() => setStep(4)} className="w-full max-w-xs">
+        取引の作成
+      </Button>
+    </div>
   );
 };
 
@@ -80,19 +126,20 @@ const Step4 = () => {
   };
 
   return (
-    <main className="flex flex-col min-h-[calc(100dvh-160px)]">
-      <div className="flex flex-col items-center justify-center h-full px-4 space-y-4">
-        <h1 className="text-3xl font-bold">取引リンクをshare！</h1>
-        <div onClick={onCopy} className="flex items-center space-x-2">
-          {copied ? <Check size={16} /> : <Clipboard size={16} />}
-          <p className="bg-gray-100 p-2 rounded-md text-blue-500">https://trade.example.com</p>
-        </div>
+    <div className="flex flex-col items-center justify-center px-4 space-y-8 w-full max-w-3xl mx-auto">
+      <h2 className="text-2xl font-bold">取引リンクをshare！</h2>
+      <div
+        onClick={onCopy}
+        className="flex items-center space-x-2 bg-gray-100 p-3 rounded-md cursor-pointer hover:bg-gray-200 transition-colors"
+      >
+        {copied ? <Check size={20} className="text-green-500" /> : <Clipboard size={20} className="text-blue-500" />}
+        <p className="text-blue-500 font-medium">https://trade.example.com</p>
       </div>
-    </main>
+    </div>
   );
 };
 
-export const Trade = () => {
+export const TradePage = () => {
   const [step, setStep] = useState<number>(1);
   const [nfts, setNfts] = useState<OwnedNft[]>([]);
   const [selectedNfts, setSelectedNfts] = useState<OwnedNft[]>([]);
@@ -128,10 +175,13 @@ export const Trade = () => {
 
   return (
     <Layout>
-      {step === 1 && <Step1 nfts={nfts} selectMyNft={selectMyNft} />}
-      {step === 2 && <Step2 nfts={nfts} selectTradeNft={selectTradeNft} />}
-      {step === 3 && <Step3 selectedNfts={selectedNfts} setStep={setStep} />}
-      {step === 4 && <Step4 />}
+      <main className="flex flex-col min-h-[calc(100dvh-160px)] py-8">
+        <StepFlow currentStep={step} />
+        {step === 1 && <Step1 nfts={nfts} selectMyNft={selectMyNft} address={address} />}
+        {step === 2 && <Step2 nfts={nfts} selectTradeNft={selectTradeNft} />}
+        {step === 3 && <Step3 selectedNfts={selectedNfts} setStep={setStep} />}
+        {step === 4 && <Step4 />}
+      </main>
     </Layout>
   );
 };
