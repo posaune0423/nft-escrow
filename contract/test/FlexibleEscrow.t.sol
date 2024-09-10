@@ -41,14 +41,18 @@ contract FlexibleEscrowTest is Test {
     function testApproveTrade() public {
         testInitiateTrade();
 
+        assertEq(token.balanceOf(alice), 1000 ether, "Alice's initial balance incorrect");
+        assertEq(token.balanceOf(bob), 1000 ether, "Bob's initial balance incorrect");
+        assertEq(token.balanceOf(escrow.owner()), 1_000_000 ether, "Owner's initial balance incorrect");
+
         vm.startPrank(bob);
         token.approve(address(escrow), 100 ether);
         escrow.approveTrade(0);
         vm.stopPrank();
 
         assertEq(nft.ownerOf(1), bob);
-        assertEq(token.balanceOf(alice), 1099 ether); // 1000 + 100 - 1 (fee)
-        assertEq(token.balanceOf(escrow.owner()), 1 ether); // fee
+        assertEq(token.balanceOf(alice), 1099 ether); // 1000 + 99 (100 - 1% fee)
+        assertEq(token.balanceOf(escrow.owner()), 1_000_001 ether); // 1% fee
     }
 
     function testCancelTrade() public {
@@ -68,26 +72,31 @@ contract FlexibleEscrowTest is Test {
     function testFeeCollection() public {
         testInitiateTrade();
 
+        assertEq(token.balanceOf(alice), 1000 ether, "Alice's initial balance incorrect");
+        assertEq(token.balanceOf(bob), 1000 ether, "Bob's initial balance incorrect");
+        assertEq(token.balanceOf(escrow.owner()), 1_000_000 ether, "Owner's initial balance incorrect");
+
+
         vm.startPrank(bob);
         token.approve(address(escrow), 100 ether);
         escrow.approveTrade(0);
         vm.stopPrank();
 
-        assertEq(token.balanceOf(escrow.owner()), 1 ether); // 1% fee
+        assertEq(token.balanceOf(escrow.owner()), 1_000_001 ether); // 1% fee
+        assertEq(token.balanceOf(alice), 1099 ether); // 1000 + 99 (100 - 1% fee)
     }
 
     function testSetFeePercentage() public {
         vm.prank(escrow.owner());
         escrow.setFeePercentage(2);
-
         assertEq(escrow.feePercentage(), 2);
 
         vm.expectRevert("Only owner can set fee");
         vm.prank(alice);
         escrow.setFeePercentage(3);
 
-        vm.expectRevert("Fee percentage too high");
         vm.prank(escrow.owner());
+        vm.expectRevert("Fee percentage too high");
         escrow.setFeePercentage(11);
     }
 }

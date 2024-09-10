@@ -4,10 +4,13 @@ pragma solidity ^0.8.20;
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
+import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 
-contract FlexibleEscrow {
+
+contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     using SafeERC20 for IERC20;
 
     address public owner;
@@ -51,8 +54,13 @@ contract FlexibleEscrow {
     event TradeCompleted(uint256 tradeId);
     event TradeCancelled(uint256 tradeId);
 
-    constructor() {
-        owner = msg.sender;
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 
     // Function to initiate a trade
@@ -98,8 +106,8 @@ contract FlexibleEscrow {
         uint256 initiatorFee = calculateFee(trade.counterpartyAsset);
         uint256 counterpartyFee = calculateFee(trade.initiatorAsset);
 
-        _transferFromEscrow(trade.counterparty, trade.initiatorAsset);
-        _transferFromEscrow(trade.initiator, trade.counterpartyAsset);
+        _transferFromEscrow(trade.counterparty, trade.initiatorAsset, counterpartyFee);
+        _transferFromEscrow(trade.initiator, trade.counterpartyAsset, initiatorFee);
 
         emit TradeCompleted(_tradeId);
         delete trades[_tradeId];
@@ -112,10 +120,10 @@ contract FlexibleEscrow {
         require(msg.sender == trade.initiator || msg.sender == trade.counterparty, "Not authorized");
 
         if (trade.initiatorApproved) {
-            _transferFromEscrow(trade.initiator, trade.initiatorAsset);
+            _transferFromEscrow(trade.initiator, trade.initiatorAsset, 0);
         }
         if (trade.counterpartyApproved) {
-            _transferFromEscrow(trade.counterparty, trade.counterpartyAsset);
+            _transferFromEscrow(trade.counterparty, trade.counterpartyAsset, 0);
         }
 
         emit TradeCancelled(_tradeId);
@@ -148,7 +156,9 @@ contract FlexibleEscrow {
             IERC20 ft = IERC20(_asset.tokenAddress);
             uint256 amountAfterFee = _asset.amount - _fee;
             ft.safeTransfer(_to, amountAfterFee);
-            ft.safeTransfer(owner, _fee);
+            if (_fee > 0) {
+                ft.safeTransfer(owner, _fee);
+            }
         }
     }
 
