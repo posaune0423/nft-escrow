@@ -1,11 +1,12 @@
+import { APP_NAME } from "@/constants";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
 
 export const LP = () => {
   return (
-    <main className="flex flex-col min-h-[100dvh]">
+    <main className="flex flex-col min-h-[calc(100dvh-160px)]">
       <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-16">
-        <h1 className="text-5xl font-bold">Welcome to NFT Trade</h1>
+        <h1 className="text-5xl font-bold">Welcome to {APP_NAME}</h1>
       </div>
 
       <div className="bg-white text-black px-4 py-16">

@@ -1,9 +1,15 @@
 import "./index.scss";
+import "@rainbow-me/rainbowkit/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./app";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { App } from "./app";
 import { Trade } from "./app/trade";
+import { getDefaultConfig, RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
+import { WagmiProvider } from "wagmi";
+import { mainnet, polygon, optimism, arbitrum, base } from "wagmi/chains";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { APP_NAME } from "./constants";
 
 const router = createBrowserRouter([
   {
@@ -16,8 +22,28 @@ const router = createBrowserRouter([
   },
 ]);
 
+const config = getDefaultConfig({
+  appName: APP_NAME,
+  projectId: "YOUR_PROJECT_ID",
+  chains: [mainnet, polygon, optimism, arbitrum, base],
+});
+
+const queryClient = new QueryClient();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider
+          theme={lightTheme({
+            accentColor: "#09090b",
+            accentColorForeground: "#FAFAFA",
+            borderRadius: "medium",
+          })}
+        >
+          <RouterProvider router={router} />
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   </StrictMode>
 );
