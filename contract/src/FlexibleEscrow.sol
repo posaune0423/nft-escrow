@@ -5,7 +5,6 @@ import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
-
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
