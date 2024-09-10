@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
-
-
 contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     using SafeERC20 for IERC20;
 
@@ -85,23 +83,25 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     }
 
     // Approve the trade by the initiator or counterparty
-    function approveTrade(uint256 _tradeId) external {
-        Trade storage trade = trades[_tradeId];
-        require(trade.initiator != address(0), "Trade does not exist");
-        require(
-            msg.sender == trade.counterparty,
-            "Only counterparty can approve"
-        );
+    function approveTrade(uint256 tradeId) external nonReentrant {
+        Trade storage trade = trades[tradeId];
+        require(msg.sender == trade.counterparty, "Only counterparty can approve");
+        require(!trade.counterpartyApproved, "Already approved");
+
         require(_transferToEscrow(msg.sender, trade.counterpartyAsset), "Failed to transfer counterparty asset");
 
         trade.counterpartyApproved = true;
-        emit TradeApproved(_tradeId, msg.sender);
-        completeTrade(_tradeId);
+
+        emit TradeApproved(tradeId, msg.sender);
+
+        if (trade.initiatorApproved) {
+            _executeTrade(tradeId);
+        }
     }
 
-    // Internal function to complete the trade
-    function completeTrade(uint256 _tradeId) internal nonReentrant {
-        Trade storage trade = trades[_tradeId];
+    function _executeTrade(uint256 tradeId) internal {
+        Trade storage trade = trades[tradeId];
+        require(trade.initiatorApproved && trade.counterpartyApproved, "Trade not fully approved");
 
         uint256 initiatorFee = calculateFee(trade.counterpartyAsset);
         uint256 counterpartyFee = calculateFee(trade.initiatorAsset);
@@ -109,12 +109,14 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         _transferFromEscrow(trade.counterparty, trade.initiatorAsset, counterpartyFee);
         _transferFromEscrow(trade.initiator, trade.counterpartyAsset, initiatorFee);
 
-        emit TradeCompleted(_tradeId);
-        delete trades[_tradeId];
+        emit TradeCompleted(tradeId);
+        // トレード情報を削除せず、完了フラグを設定する
+        trade.initiatorApproved = false;
+        trade.counterpartyApproved = false;
     }
 
     // Cancel the trade
-    function cancelTrade(uint256 _tradeId) external {
+    function cancelTrade(uint256 _tradeId) external nonReentrant {
         Trade storage trade = trades[_tradeId];
         require(trade.initiator != address(0), "Trade does not exist");
         require(msg.sender == trade.initiator || msg.sender == trade.counterparty, "Not authorized");
