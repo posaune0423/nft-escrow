@@ -4,10 +4,11 @@ pragma solidity ^0.8.20;
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
+
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
-
-contract FlexibleEscrow {
+contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     using SafeERC20 for IERC20;
 
     address public owner;
@@ -51,8 +52,13 @@ contract FlexibleEscrow {
     event TradeCompleted(uint256 tradeId);
     event TradeCancelled(uint256 tradeId);
 
-    constructor() {
-        owner = msg.sender;
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 
     // Function to initiate a trade
@@ -77,45 +83,49 @@ contract FlexibleEscrow {
     }
 
     // Approve the trade by the initiator or counterparty
-    function approveTrade(uint256 _tradeId) external {
-        Trade storage trade = trades[_tradeId];
-        require(trade.initiator != address(0), "Trade does not exist");
-        require(
-            msg.sender == trade.counterparty,
-            "Only counterparty can approve"
-        );
+    function approveTrade(uint256 tradeId) external nonReentrant {
+        Trade storage trade = trades[tradeId];
+        require(msg.sender == trade.counterparty, "Only counterparty can approve");
+        require(!trade.counterpartyApproved, "Already approved");
+
         require(_transferToEscrow(msg.sender, trade.counterpartyAsset), "Failed to transfer counterparty asset");
 
         trade.counterpartyApproved = true;
-        emit TradeApproved(_tradeId, msg.sender);
-        completeTrade(_tradeId);
+
+        emit TradeApproved(tradeId, msg.sender);
+
+        if (trade.initiatorApproved) {
+            _executeTrade(tradeId);
+        }
     }
 
-    // Internal function to complete the trade
-    function completeTrade(uint256 _tradeId) internal nonReentrant {
-        Trade storage trade = trades[_tradeId];
+    function _executeTrade(uint256 tradeId) internal {
+        Trade storage trade = trades[tradeId];
+        require(trade.initiatorApproved && trade.counterpartyApproved, "Trade not fully approved");
 
         uint256 initiatorFee = calculateFee(trade.counterpartyAsset);
         uint256 counterpartyFee = calculateFee(trade.initiatorAsset);
 
-        _transferFromEscrow(trade.counterparty, trade.initiatorAsset);
-        _transferFromEscrow(trade.initiator, trade.counterpartyAsset);
+        _transferFromEscrow(trade.counterparty, trade.initiatorAsset, counterpartyFee);
+        _transferFromEscrow(trade.initiator, trade.counterpartyAsset, initiatorFee);
 
-        emit TradeCompleted(_tradeId);
-        delete trades[_tradeId];
+        emit TradeCompleted(tradeId);
+        // トレード情報を削除せず、完了フラグを設定する
+        trade.initiatorApproved = false;
+        trade.counterpartyApproved = false;
     }
 
     // Cancel the trade
-    function cancelTrade(uint256 _tradeId) external {
+    function cancelTrade(uint256 _tradeId) external nonReentrant {
         Trade storage trade = trades[_tradeId];
         require(trade.initiator != address(0), "Trade does not exist");
         require(msg.sender == trade.initiator || msg.sender == trade.counterparty, "Not authorized");
 
         if (trade.initiatorApproved) {
-            _transferFromEscrow(trade.initiator, trade.initiatorAsset);
+            _transferFromEscrow(trade.initiator, trade.initiatorAsset, 0);
         }
         if (trade.counterpartyApproved) {
-            _transferFromEscrow(trade.counterparty, trade.counterpartyAsset);
+            _transferFromEscrow(trade.counterparty, trade.counterpartyAsset, 0);
         }
 
         emit TradeCancelled(_tradeId);
@@ -148,7 +158,9 @@ contract FlexibleEscrow {
             IERC20 ft = IERC20(_asset.tokenAddress);
             uint256 amountAfterFee = _asset.amount - _fee;
             ft.safeTransfer(_to, amountAfterFee);
-            ft.safeTransfer(owner, _fee);
+            if (_fee > 0) {
+                ft.safeTransfer(owner, _fee);
+            }
         }
     }
 
