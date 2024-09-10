@@ -2,23 +2,44 @@
 pragma solidity ^0.8.20;
 
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 
-contract NFTEscrow {
+
+contract FlexibleEscrow {
+    using SafeERC20 for IERC20;
+
     address public owner;
+    uint256 public feePercentage; // 1 = 1%
+
+    enum TokenType { ERC721, ERC20 }
+
+    constructor() {
+        owner = msg.sender;
+        feePercentage = 1; // デフォルトで1%の手数料
+    }
+
+    struct Asset {
+        TokenType tokenType;
+        address tokenAddress;
+        uint256 tokenId;
+        uint256 amount;
+    }
 
     struct Trade {
         address initiator;
         address counterparty;
-        IERC721 token1;
-        uint256 tokenId1;
-        IERC721 token2;
-        uint256 tokenId2;
+        Asset initiatorAsset;
+        Asset counterpartyAsset;
         bool initiatorApproved;
         bool counterpartyApproved;
     }
 
     // Trade information storage
     mapping(uint256 => Trade) public trades;
+    mapping(address => mapping(uint256 => bool)) public isNFTInEscrow;
+
     uint256 public tradeCounter;
 
     event TradeInitiated(
@@ -37,24 +58,17 @@ contract NFTEscrow {
     // Function to initiate a trade
     function initiateTrade(
         address _counterparty,
-        IERC721 _token1,
-        uint256 _tokenId1,
-        IERC721 _token2,
-        uint256 _tokenId2
+        Asset memory _initiatorAsset,
+        Asset memory _counterpartyAsset
     ) external {
-        require(
-            _token1.ownerOf(_tokenId1) == msg.sender,
-            "You don't own token1"
-        );
+        require(_transferToEscrow(msg.sender, _initiatorAsset), "Failed to transfer initiator asset");
 
         trades[tradeCounter] = Trade({
             initiator: msg.sender,
             counterparty: _counterparty,
-            token1: _token1,
-            tokenId1: _tokenId1,
-            token2: _token2,
-            tokenId2: _tokenId2,
-            initiatorApproved: false,
+            initiatorAsset: _initiatorAsset,
+            counterpartyAsset: _counterpartyAsset,
+            initiatorApproved: true,
             counterpartyApproved: false
         });
 
@@ -67,42 +81,27 @@ contract NFTEscrow {
         Trade storage trade = trades[_tradeId];
         require(trade.initiator != address(0), "Trade does not exist");
         require(
-            msg.sender == trade.initiator || msg.sender == trade.counterparty,
-            "Not authorized"
+            msg.sender == trade.counterparty,
+            "Only counterparty can approve"
         );
+        require(_transferToEscrow(msg.sender, trade.counterpartyAsset), "Failed to transfer counterparty asset");
 
-        if (msg.sender == trade.initiator) {
-            trade.initiatorApproved = true;
-        } else if (msg.sender == trade.counterparty) {
-            trade.counterpartyApproved = true;
-        }
-
+        trade.counterpartyApproved = true;
         emit TradeApproved(_tradeId, msg.sender);
-
-        if (trade.initiatorApproved && trade.counterpartyApproved) {
-            completeTrade(_tradeId);
-        }
+        completeTrade(_tradeId);
     }
 
     // Internal function to complete the trade
-    function completeTrade(uint256 _tradeId) internal {
+    function completeTrade(uint256 _tradeId) internal nonReentrant {
         Trade storage trade = trades[_tradeId];
 
-        // Transfer the NFTs between both parties
-        trade.token1.safeTransferFrom(
-            trade.initiator,
-            trade.counterparty,
-            trade.tokenId1
-        );
-        trade.token2.safeTransferFrom(
-            trade.counterparty,
-            trade.initiator,
-            trade.tokenId2
-        );
+        uint256 initiatorFee = calculateFee(trade.counterpartyAsset);
+        uint256 counterpartyFee = calculateFee(trade.initiatorAsset);
+
+        _transferFromEscrow(trade.counterparty, trade.initiatorAsset);
+        _transferFromEscrow(trade.initiator, trade.counterpartyAsset);
 
         emit TradeCompleted(_tradeId);
-
-        // Clear the trade data
         delete trades[_tradeId];
     }
 
@@ -110,14 +109,59 @@ contract NFTEscrow {
     function cancelTrade(uint256 _tradeId) external {
         Trade storage trade = trades[_tradeId];
         require(trade.initiator != address(0), "Trade does not exist");
-        require(
-            msg.sender == trade.initiator || msg.sender == trade.counterparty,
-            "Not authorized"
-        );
+        require(msg.sender == trade.initiator || msg.sender == trade.counterparty, "Not authorized");
+
+        if (trade.initiatorApproved) {
+            _transferFromEscrow(trade.initiator, trade.initiatorAsset);
+        }
+        if (trade.counterpartyApproved) {
+            _transferFromEscrow(trade.counterparty, trade.counterpartyAsset);
+        }
 
         emit TradeCancelled(_tradeId);
-
-        // Clear the trade data
         delete trades[_tradeId];
+    }
+
+    function _transferToEscrow(address _from, Asset memory _asset) internal returns (bool) {
+        if (_asset.tokenType == TokenType.ERC721) {
+            IERC721 nft = IERC721(_asset.tokenAddress);
+            require(nft.ownerOf(_asset.tokenId) == _from, "You don't own the NFT");
+            require(!isNFTInEscrow[_asset.tokenAddress][_asset.tokenId], "NFT is already in escrow");
+            nft.safeTransferFrom(_from, address(this), _asset.tokenId);
+            isNFTInEscrow[_asset.tokenAddress][_asset.tokenId] = true;
+        } else if (_asset.tokenType == TokenType.ERC20) {
+            IERC20 ft = IERC20(_asset.tokenAddress);
+            require(ft.balanceOf(_from) >= _asset.amount, "Insufficient FT balance");
+            ft.safeTransferFrom(_from, address(this), _asset.amount);
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    function _transferFromEscrow(address _to, Asset memory _asset, uint256 _fee) internal {
+        if (_asset.tokenType == TokenType.ERC721) {
+            IERC721 nft = IERC721(_asset.tokenAddress);
+            nft.safeTransferFrom(address(this), _to, _asset.tokenId);
+            isNFTInEscrow[_asset.tokenAddress][_asset.tokenId] = false;
+        } else if (_asset.tokenType == TokenType.ERC20) {
+            IERC20 ft = IERC20(_asset.tokenAddress);
+            uint256 amountAfterFee = _asset.amount - _fee;
+            ft.safeTransfer(_to, amountAfterFee);
+            ft.safeTransfer(owner, _fee);
+        }
+    }
+
+    function calculateFee(Asset memory _asset) internal view returns (uint256) {
+        if (_asset.tokenType == TokenType.ERC20) {
+            return (_asset.amount * feePercentage) / 100;
+        }
+        return 0; // NFTの場合は手数料なし
+    }
+
+    function setFeePercentage(uint256 _newFeePercentage) external {
+        require(msg.sender == owner, "Only owner can set fee");
+        require(_newFeePercentage <= 10, "Fee percentage too high"); // max 10%
+        feePercentage = _newFeePercentage;
     }
 }
