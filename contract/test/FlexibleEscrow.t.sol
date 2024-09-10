@@ -91,8 +91,11 @@ contract FlexibleEscrowTest is Test {
         assertEq(finalInitiatorApproved, false, "Initiator approval should be reset after trade completion");
         assertEq(finalCounterpartyApproved, false, "Counterparty approval should be reset after trade completion");
 
+        // 攻撃が失敗したことを確認
+        assertEq(attacker.attackSucceeded(), false, "Reentrancy attack should not succeed");
+
         // 攻撃回数を確認
-        assertEq(attacker.attackCount(), 1, "Attack should only succeed once");
+        assertEq(attacker.attackCount(), 1, "Attack should be attempted once");
 
         // NFTの所有者を確認
         assertEq(nft.ownerOf(1), address(attacker), "NFT should be transferred to attacker");

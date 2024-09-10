@@ -10,6 +10,7 @@ contract ReentrancyAttacker is IERC721Receiver {
     uint256 public attackCount;
     uint256 public tradeId;
     IERC20 public token;
+    bool public attackSucceeded;
 
     constructor(address _escrow, address _token) {
         escrow = FlexibleEscrow(_escrow);
@@ -29,12 +30,12 @@ contract ReentrancyAttacker is IERC721Receiver {
         bytes memory
     ) public override returns (bytes4) {
         attackCount++;
-        if (attackCount == 1) {
-            try escrow.approveTrade(tradeId) {
-                // 攻撃が成功した場合（ここには到達しないはず）
-            } catch {
-                // 攻撃が失敗した場合（期待される結果）
-            }
+        try escrow.approveTrade(tradeId) {
+            // 攻撃が成功した場合（ここには到達しないはず）
+            attackSucceeded = true;
+        } catch {
+            // 攻撃が失敗した場合（期待される結果）
+            attackSucceeded = false;
         }
         return this.onERC721Received.selector;
     }
