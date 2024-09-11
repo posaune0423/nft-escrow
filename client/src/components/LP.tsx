@@ -4,22 +4,25 @@ import { Link } from "react-router-dom";
 
 export const LP = () => {
   return (
-    <main className="flex flex-col min-h-[calc(100dvh-160px)]">
-      <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-16">
-        <h1 className="text-5xl font-bold">Welcome to {APP_NAME}</h1>
+    <main className="flex flex-col justify-between min-h-[100dvh] p-4">
+      <h1 className="text-6xl font-bold text-primary font-delaGothicOne mx-auto py-12">{APP_NAME}</h1>
+
+      <div className="bg-white text-slate-900 px-8 py-20 rounded-lg shadow-xl">
+        <h2 className="text-2xl font-bold mb-6">NFTを安全・簡単に取引</h2>
+        <p className="text-lg text-muted-foreground mb-4">
+          エスクローでは、NFTの個人間取引を安全かつ簡単に行うことができます。
+        </p>
+        <ul className="list-disc list-inside text-md text-muted-foreground space-y-2 mb-6">
+          <li>簡単な操作で NFT の作成、共有が可能</li>
+          <li>セキュアな環境での取引を実現</li>
+          <li>豊富な NFT コレクションへのアクセス</li>
+        </ul>
+        <p className="text-xl font-semibold">NFT 取引の新しい扉を開きましょう。</p>
       </div>
 
-      <div className="bg-white text-black px-4 py-16">
-        <p className="text-3xl font-bold">NFTを安全に取引</p>
-        <p className="text-muted-foreground">
-          NFTを簡単に交換できる方法を見つけましょう。 作成、共有、取引を簡単に行えます。
-        </p>
-      </div>
-      <div className="px-6">
-        <Button className="w-full h-12 text-lg" size="lg">
-          <Link to="/trade">取引を始める</Link>
-        </Button>
-      </div>
+      <Button className="w-full h-16 text-lg rounded-3xl" size="lg">
+        <Link to="/trade">交換を始める 👈🏻</Link>
+      </Button>
     </main>
   );
 };
