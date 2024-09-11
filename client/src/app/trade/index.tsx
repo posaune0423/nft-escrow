@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getNetworkFromChainId } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Clipboard, Check } from "lucide-react";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Layout } from "@/components/Layout";
 
 const StepFlow = ({ currentStep }: { currentStep: number }) => {
@@ -36,11 +36,14 @@ const Step1 = ({
   selectMyNft: (nft: OwnedNft) => void;
   address: string | undefined;
 }) => {
+  const { openConnectModal } = useConnectModal();
   if (!address) {
     return (
       <div className="flex flex-col items-center justify-center px-4 space-y-4">
         <h2 className="text-2xl font-bold">ウォレットを接続してください</h2>
-        <ConnectButton />
+        <Button onClick={openConnectModal} className="w-full h-16 text-lg rounded-3xl">
+          Walletを接続
+        </Button>
       </div>
     );
   }
@@ -49,7 +52,15 @@ const Step1 = ({
     <div className="flex flex-col items-center justify-center px-4 space-y-4">
       <h2 className="text-2xl font-bold">自分のNFTを選択してください</h2>
       {nfts.length === 0 ? (
-        <p>NFTを読み込んでいます...</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-3xl">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="w-full aspect-square bg-gray-200 animate-pulse rounded-lg">
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-gray-300 rounded-full animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-3xl">
           {nfts.map((nft) => (
@@ -110,7 +121,7 @@ const Step3 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (
           </div>
         ))}
       </div>
-      <Button onClick={() => setStep(4)} className="w-full max-w-xs">
+      <Button onClick={() => setStep(4)} className="w-full h-16 text-lg rounded-3xl">
         取引の作成
       </Button>
     </div>
@@ -133,7 +144,7 @@ const Step4 = () => {
         className="flex items-center space-x-2 bg-gray-100 p-3 rounded-md cursor-pointer hover:bg-gray-200 transition-colors"
       >
         {copied ? <Check size={20} className="text-green-500" /> : <Clipboard size={20} className="text-blue-500" />}
-        <p className="text-blue-500 font-medium">https://trade.example.com</p>
+        <p className="text-blue-500 font-medium">https://escrow.example.com/trade/hogehoge</p>
       </div>
     </div>
   );
