@@ -7,7 +7,7 @@ import { TopPage } from "./app";
 import { TradePage } from "./app/trade";
 import { getDefaultConfig, RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { mainnet, polygon, optimism, arbitrum, base } from "wagmi/chains";
+import { polygonAmoy } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { APP_NAME } from "./constants";
 
@@ -25,7 +25,8 @@ const router = createBrowserRouter([
 const config = getDefaultConfig({
   appName: APP_NAME,
   projectId: "YOUR_PROJECT_ID",
-  chains: [mainnet, polygon, optimism, arbitrum, base],
+  chains: [polygonAmoy],
+  // chains: [mainnet, polygon, optimism, arbitrum, base],
 });
 
 const queryClient = new QueryClient();

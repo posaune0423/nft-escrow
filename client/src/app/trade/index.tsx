@@ -1,6 +1,6 @@
-import { useAccount, useChainId } from "wagmi";
+import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { Alchemy, Nft, OwnedNft } from "alchemy-sdk";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getNetworkFromChainId } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Clipboard, Check } from "lucide-react";
@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { abi } from "@/constants/abi";
+import { CONTRACT_ADDRESS } from "@/constants/contract";
 
 const StepFlow = ({ currentStep }: { currentStep: number }) => {
   const steps = ["自分のNFT選択", "交換条件の入力", "確認", "取引リンク"];
@@ -127,9 +129,7 @@ const Step2 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (
         alt={selectedNfts[0].tokenId}
         className="w-32 h-32 object-cover rounded-lg shadow-md"
       />
-      <p className="text-sm text-gray-500">
-        交換に出すNFT: {selectedNfts[0].name}
-      </p>
+      <p className="text-sm text-gray-500">交換に出すNFT: {selectedNfts[0].name}</p>
 
       <hr className="w-full border-gray-200 my-6" />
 
@@ -183,6 +183,47 @@ const Step2 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (
 };
 
 const Step3 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (step: number) => void }) => {
+  const chainId = useChainId();
+  const { data: hash, writeContract } = useWriteContract();
+  const { data: receipt } = useWaitForTransactionReceipt({ hash });
+
+  const handleInitiateTrade = useCallback(() => {
+    if (!chainId) return;
+    console.log(chainId);
+    try {
+      writeContract({
+        chainId,
+        address: CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!,
+        abi,
+        functionName: "initiateTrade",
+        args: [
+          "0x..." as `0x${string}`, // Replace with actual hex string
+          {
+            tokenType: 0, // 0 for ERC721, 1 for ERC20, etc.
+            tokenAddress: "0x..." as `0x${string}`, // NFT contract address
+            tokenId: BigInt(selectedNfts[0].tokenId),
+            amount: BigInt(1), // 1 for NFTs
+          },
+          {
+            tokenType: 0, // Adjust based on what you're trading for
+            tokenAddress: "0x..." as `0x${string}`, // Contract address of desired token
+            tokenId: BigInt(0), // 0 if trading for ERC20, or specific tokenId for NFT
+            amount: BigInt(0), // 0 for NFT, or amount for ERC20
+          },
+        ],
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }, [writeContract, selectedNfts, chainId]);
+
+  useEffect(() => {
+    if (receipt) {
+      console.log(receipt);
+      setStep(4);
+    }
+  }, [receipt, setStep]);
+
   return (
     <div className="flex flex-col items-center justify-center px-4 space-y-8 w-full max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold">選択したNFTの確認</h2>
@@ -198,7 +239,7 @@ const Step3 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (
           </div>
         ))}
       </div>
-      <Button onClick={() => setStep(4)} className="w-full h-16 text-lg rounded-3xl">
+      <Button onClick={handleInitiateTrade} className="w-full h-16 text-lg rounded-3xl">
         取引の作成
       </Button>
     </div>

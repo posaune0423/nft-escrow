@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getNetworkFromChainId(chainId: number): Network | undefined {
+export function getNetworkFromChainId(chainId: number): Network {
   switch (chainId) {
     case 1:
       return Network.ETH_MAINNET;
@@ -22,8 +22,8 @@ export function getNetworkFromChainId(chainId: number): Network | undefined {
       return Network.ARB_SEPOLIA;
     case 137:
       return Network.MATIC_MAINNET;
-    case 80001:
-      return Network.MATIC_MUMBAI;
+    case 80002:
+      return Network.MATIC_AMOY;
     case 592:
       return Network.ASTAR_MAINNET;
     case 1101:
@@ -85,6 +85,6 @@ export function getNetworkFromChainId(chainId: number): Network | undefined {
     case 5611:
       return Network.OPBNB_TESTNET;
     default:
-      return undefined;
+      throw new Error(`Unsupported chainId: ${chainId}`);
   }
 }
