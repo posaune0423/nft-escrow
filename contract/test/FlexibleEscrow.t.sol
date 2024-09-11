@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 import "../src/FlexibleEscrow.sol";
 import "./mocks/MockERC721.sol";
 import "./mocks/MockERC20.sol";
@@ -130,5 +131,82 @@ contract FlexibleEscrowTest is Test {
         vm.prank(escrow.owner());
         vm.expectRevert("Fee percentage too high");
         escrow.setFeePercentage(11);
+    }
+
+    function testGetTradesByAddress() public {
+        // アリスがトレードを開始
+        testInitiateTrade();
+
+        // ボブがトレードを承認
+        vm.startPrank(bob);
+        token.approve(address(escrow), 100 ether);
+        escrow.approveTrade(0);
+        vm.stopPrank();
+
+        // アリスが新しいトレードを開始
+        vm.startPrank(alice);
+        nft.mint(alice, 2);
+        nft.approve(address(escrow), 2);
+        FlexibleEscrow.Asset memory aliceAsset2 = FlexibleEscrow.Asset(FlexibleEscrow.TokenType.ERC721, address(nft), 2, 0);
+        FlexibleEscrow.Asset memory bobAsset2 = FlexibleEscrow.Asset(FlexibleEscrow.TokenType.ERC20, address(token), 0, 200 ether);
+        escrow.initiateTrade(bob, aliceAsset2, bobAsset2);
+        vm.stopPrank();
+
+        // アリスのトレードを取得
+        uint256[] memory aliceTrades = escrow.getTradesByAddress(alice);
+        assertEq(aliceTrades.length, 2);
+        assertEq(aliceTrades[0], 0);
+        assertEq(aliceTrades[1], 1);
+
+        // ボブのトレードを取得
+        uint256[] memory bobTrades = escrow.getTradesByAddress(bob);
+        assertEq(bobTrades.length, 2);
+        assertEq(bobTrades[0], 0);
+        assertEq(bobTrades[1], 1);
+
+        // 関係のないアドレスのトレードを取得
+        uint256[] memory nonParticipantTrades = escrow.getTradesByAddress(address(3));
+        assertEq(nonParticipantTrades.length, 0);
+    }
+
+    function testGetTradeStatus() public {
+        console.log("Starting testGetTradeStatus");
+
+        // トレードを開始
+        testInitiateTrade();
+        console.log("Trade initiated. Status:", uint256(escrow.getTradeStatus(0)));
+
+        // 開始直後の状態を確認
+        assertEq(uint256(escrow.getTradeStatus(0)), uint256(FlexibleEscrow.TradeStatus.Initiated), "Initial status should be Initiated");
+
+        // ボブがトレードを承認
+        vm.startPrank(bob);
+        token.approve(address(escrow), 100 ether);
+        escrow.approveTrade(0);
+        vm.stopPrank();
+        console.log("Bob approved the trade. Status:", uint256(escrow.getTradeStatus(0)));
+
+        // 完了後の状態を確認
+        assertEq(uint256(escrow.getTradeStatus(0)), uint256(FlexibleEscrow.TradeStatus.Completed), "Status should be Completed after both approvals");
+
+        // 新しいトレードを開始
+        vm.startPrank(alice);
+        nft.mint(alice, 2);
+        nft.approve(address(escrow), 2);
+        FlexibleEscrow.Asset memory aliceAsset2 = FlexibleEscrow.Asset(FlexibleEscrow.TokenType.ERC721, address(nft), 2, 0);
+        FlexibleEscrow.Asset memory bobAsset2 = FlexibleEscrow.Asset(FlexibleEscrow.TokenType.ERC20, address(token), 0, 200 ether);
+        escrow.initiateTrade(bob, aliceAsset2, bobAsset2);
+        vm.stopPrank();
+        console.log("New trade initiated. Status of trade 1:", uint256(escrow.getTradeStatus(1)));
+
+        // 新しいトレードの状態を確認
+        assertEq(uint256(escrow.getTradeStatus(1)), uint256(FlexibleEscrow.TradeStatus.Initiated), "New trade status should be Initiated");
+
+        // 存在しないトレードの状態を確認
+        uint256 nonExistentStatus = uint256(escrow.getTradeStatus(99));
+        console.log("Status of non-existent trade:", nonExistentStatus);
+        assertEq(nonExistentStatus, uint256(FlexibleEscrow.TradeStatus.NonExistent), "Non-existent trade status should be NonExistent");
+
+        console.log("testGetTradeStatus completed");
     }
 }

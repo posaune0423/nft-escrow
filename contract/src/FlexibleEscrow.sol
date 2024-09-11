@@ -13,7 +13,8 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     address public owner;
     uint256 public feePercentage; // 1 = 1%
 
-    enum TokenType { ERC721, ERC20 }
+    enum TokenType { ERC20, ERC721 }
+    enum TradeStatus { NonExistent, Initiated, Approved, Completed, Cancelled }
 
     constructor() {
         owner = msg.sender;
@@ -39,6 +40,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     // Trade information storage
     mapping(uint256 => Trade) public trades;
     mapping(address => mapping(uint256 => bool)) public isNFTInEscrow;
+    mapping(uint256 => TradeStatus) public tradeStatus;
 
     uint256 public tradeCounter;
 
@@ -78,6 +80,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         });
 
         emit TradeInitiated(tradeCounter, msg.sender, _counterparty);
+        tradeStatus[tradeCounter] = TradeStatus.Initiated;
         tradeCounter++;
     }
 
@@ -86,6 +89,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         Trade storage trade = trades[tradeId];
         require(msg.sender == trade.counterparty, "Only counterparty can approve");
         require(!trade.counterpartyApproved, "Already approved");
+        require(tradeStatus[tradeId] == TradeStatus.Initiated, "Trade is not in the correct state");
 
         require(_transferToEscrow(msg.sender, trade.counterpartyAsset), "Failed to transfer counterparty asset");
 
@@ -95,6 +99,8 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
 
         if (trade.initiatorApproved) {
             _executeTrade(tradeId);
+        } else {
+            tradeStatus[tradeId] = TradeStatus.Approved;
         }
     }
 
@@ -109,7 +115,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         _transferFromEscrow(trade.initiator, trade.counterpartyAsset, initiatorFee);
 
         emit TradeCompleted(tradeId);
-        // トレード情報を削除せず、完了フラグを設定する
+        tradeStatus[tradeId] = TradeStatus.Completed;
         trade.initiatorApproved = false;
         trade.counterpartyApproved = false;
     }
@@ -128,7 +134,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         }
 
         emit TradeCancelled(_tradeId);
-        delete trades[_tradeId];
+        tradeStatus[_tradeId] = TradeStatus.Cancelled;
     }
 
     function _transferToEscrow(address _from, Asset memory _asset) internal returns (bool) {
@@ -175,4 +181,35 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         require(_newFeePercentage <= 10, "Fee percentage too high"); // max 10%
         feePercentage = _newFeePercentage;
     }
+
+    function getTradesByAddress(address _user) external view returns (uint256[] memory) {
+        uint256[] memory userTrades = new uint256[](tradeCounter);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < tradeCounter; i++) {
+            if (trades[i].initiator == _user || trades[i].counterparty == _user) {
+                userTrades[count] = i;
+                count++;
+            }
+        }
+
+        // 結果の配列をトリミング
+        uint256[] memory result = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = userTrades[i];
+        }
+
+        return result;
+    }
+
+    function getTradeStatus(uint256 _tradeId) external view returns (TradeStatus) {
+        Trade storage trade = trades[_tradeId];
+
+        if (trade.initiator == address(0)) {
+            return TradeStatus.NonExistent;
+        }
+
+        return tradeStatus[_tradeId];
+    }
+    
 }
