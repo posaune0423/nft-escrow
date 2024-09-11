@@ -7,14 +7,23 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
-contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
+contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     address public owner;
     uint256 public feePercentage; // 1 = 1%
 
-    enum TokenType { ERC20, ERC721 }
-    enum TradeStatus { NonExistent, Initiated, Approved, Completed, Cancelled }
+    enum TokenType {
+        ERC20,
+        ERC721
+    }
+    enum TradeStatus {
+        NonExistent,
+        Initiated,
+        Approved,
+        Completed,
+        Cancelled
+    }
 
     constructor() {
         owner = msg.sender;
@@ -68,7 +77,10 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         Asset memory _initiatorAsset,
         Asset memory _counterpartyAsset
     ) external {
-        require(_transferToEscrow(msg.sender, _initiatorAsset), "Failed to transfer initiator asset");
+        require(
+            _transferToEscrow(msg.sender, _initiatorAsset),
+            "Failed to transfer initiator asset"
+        );
 
         trades[tradeCounter] = Trade({
             initiator: msg.sender,
@@ -87,11 +99,20 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     // Approve the trade by the initiator or counterparty
     function approveTrade(uint256 tradeId) external nonReentrant {
         Trade storage trade = trades[tradeId];
-        require(msg.sender == trade.counterparty, "Only counterparty can approve");
+        require(
+            msg.sender == trade.counterparty,
+            "Only counterparty can approve"
+        );
         require(!trade.counterpartyApproved, "Already approved");
-        require(tradeStatus[tradeId] == TradeStatus.Initiated, "Trade is not in the correct state");
+        require(
+            tradeStatus[tradeId] == TradeStatus.Initiated,
+            "Trade is not in the correct state"
+        );
 
-        require(_transferToEscrow(msg.sender, trade.counterpartyAsset), "Failed to transfer counterparty asset");
+        require(
+            _transferToEscrow(msg.sender, trade.counterpartyAsset),
+            "Failed to transfer counterparty asset"
+        );
 
         trade.counterpartyApproved = true;
 
@@ -106,13 +127,24 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
 
     function _executeTrade(uint256 tradeId) internal {
         Trade storage trade = trades[tradeId];
-        require(trade.initiatorApproved && trade.counterpartyApproved, "Trade not fully approved");
+        require(
+            trade.initiatorApproved && trade.counterpartyApproved,
+            "Trade not fully approved"
+        );
 
         uint256 initiatorFee = calculateFee(trade.counterpartyAsset);
         uint256 counterpartyFee = calculateFee(trade.initiatorAsset);
 
-        _transferFromEscrow(trade.counterparty, trade.initiatorAsset, counterpartyFee);
-        _transferFromEscrow(trade.initiator, trade.counterpartyAsset, initiatorFee);
+        _transferFromEscrow(
+            trade.counterparty,
+            trade.initiatorAsset,
+            counterpartyFee
+        );
+        _transferFromEscrow(
+            trade.initiator,
+            trade.counterpartyAsset,
+            initiatorFee
+        );
 
         emit TradeCompleted(tradeId);
         tradeStatus[tradeId] = TradeStatus.Completed;
@@ -124,7 +156,10 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
     function cancelTrade(uint256 _tradeId) external nonReentrant {
         Trade storage trade = trades[_tradeId];
         require(trade.initiator != address(0), "Trade does not exist");
-        require(msg.sender == trade.initiator || msg.sender == trade.counterparty, "Not authorized");
+        require(
+            msg.sender == trade.initiator || msg.sender == trade.counterparty,
+            "Not authorized"
+        );
 
         if (trade.initiatorApproved) {
             _transferFromEscrow(trade.initiator, trade.initiatorAsset, 0);
@@ -137,16 +172,28 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         tradeStatus[_tradeId] = TradeStatus.Cancelled;
     }
 
-    function _transferToEscrow(address _from, Asset memory _asset) internal returns (bool) {
+    function _transferToEscrow(
+        address _from,
+        Asset memory _asset
+    ) internal returns (bool) {
         if (_asset.tokenType == TokenType.ERC721) {
             IERC721 nft = IERC721(_asset.tokenAddress);
-            require(nft.ownerOf(_asset.tokenId) == _from, "You don't own the NFT");
-            require(!isNFTInEscrow[_asset.tokenAddress][_asset.tokenId], "NFT is already in escrow");
+            require(
+                nft.ownerOf(_asset.tokenId) == _from,
+                "You don't own the NFT"
+            );
+            require(
+                !isNFTInEscrow[_asset.tokenAddress][_asset.tokenId],
+                "NFT is already in escrow"
+            );
             nft.safeTransferFrom(_from, address(this), _asset.tokenId);
             isNFTInEscrow[_asset.tokenAddress][_asset.tokenId] = true;
         } else if (_asset.tokenType == TokenType.ERC20) {
             IERC20 ft = IERC20(_asset.tokenAddress);
-            require(ft.balanceOf(_from) >= _asset.amount, "Insufficient FT balance");
+            require(
+                ft.balanceOf(_from) >= _asset.amount,
+                "Insufficient FT balance"
+            );
             ft.safeTransferFrom(_from, address(this), _asset.amount);
         } else {
             return false;
@@ -154,7 +201,11 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         return true;
     }
 
-    function _transferFromEscrow(address _to, Asset memory _asset, uint256 _fee) internal {
+    function _transferFromEscrow(
+        address _to,
+        Asset memory _asset,
+        uint256 _fee
+    ) internal {
         if (_asset.tokenType == TokenType.ERC721) {
             IERC721 nft = IERC721(_asset.tokenAddress);
             nft.safeTransferFrom(address(this), _to, _asset.tokenId);
@@ -182,12 +233,16 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         feePercentage = _newFeePercentage;
     }
 
-    function getTradesByAddress(address _user) external view returns (uint256[] memory) {
+    function getTradesByAddress(
+        address _user
+    ) external view returns (uint256[] memory) {
         uint256[] memory userTrades = new uint256[](tradeCounter);
         uint256 count = 0;
 
         for (uint256 i = 0; i < tradeCounter; i++) {
-            if (trades[i].initiator == _user || trades[i].counterparty == _user) {
+            if (
+                trades[i].initiator == _user || trades[i].counterparty == _user
+            ) {
                 userTrades[count] = i;
                 count++;
             }
@@ -202,7 +257,9 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
         return result;
     }
 
-    function getTradeStatus(uint256 _tradeId) external view returns (TradeStatus) {
+    function getTradeStatus(
+        uint256 _tradeId
+    ) external view returns (TradeStatus) {
         Trade storage trade = trades[_tradeId];
 
         if (trade.initiator == address(0)) {
@@ -211,5 +268,4 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver{
 
         return tradeStatus[_tradeId];
     }
-    
 }

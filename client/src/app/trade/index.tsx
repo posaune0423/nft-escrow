@@ -304,7 +304,7 @@ const Step4 = () => {
 };
 
 export const TradePage = () => {
-  const [step, setStep] = useState<number>(3);
+  const [step, setStep] = useState<number>(1);
   const [nfts, setNfts] = useState<OwnedNft[]>([]);
   const [selectedNfts, setSelectedNfts] = useState<OwnedNft[]>([]);
   const chainId = useChainId();
