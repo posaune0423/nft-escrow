@@ -10,13 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { abi } from "@/constants/abi";
+import { escrowABI, erc721ABI } from "@/constants/abi";
 import { CONTRACT_ADDRESS } from "@/constants/contract";
 import { MOCK_NFT_ADDRESS } from "@/constants/mock";
 import { TokenType } from "@/types";
 import { type Address } from "viem";
 import { toast } from "sonner";
 import { parseNftUrl } from "@/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const StepFlow = ({ currentStep }: { currentStep: number }) => {
   const steps = ["自分のNFTを選択", "交換条件の入力", "確認", "相手に共有"];
@@ -302,23 +303,43 @@ const Step3 = ({
   counterPartyAddress: Address;
 }) => {
   const chainId = useChainId();
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
+
+  const { data: approveHash, writeContract: writeApprove, isPending: isApprovePending } = useWriteContract();
+
   const { data: hash, error, writeContract, isPending } = useWriteContract();
   const { data: receipt } = useWaitForTransactionReceipt({ hash });
 
+  const handleApprove = useCallback(() => {
+    if (!chainId || !selectedNfts[0]) return;
+    try {
+      writeApprove({
+        abi: erc721ABI,
+        address: selectedNfts[0].contract.address as `0x${string}`,
+        functionName: "approve",
+        args: [CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!, BigInt(selectedNfts[0].tokenId)],
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("NFTの承認に失敗しました");
+    }
+  }, [writeApprove, chainId, selectedNfts]);
+
   const handleInitiateTrade = useCallback(() => {
-    if (!chainId || !counterPartyAddress) return;
+    if (!chainId || !counterPartyAddress || !selectedNfts[0]) return;
     try {
       writeContract({
         chainId,
         address: CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!,
-        abi,
+        abi: escrowABI,
         functionName: "initiateTrade",
         args: [
           counterPartyAddress,
           {
             tokenType: TokenType.ERC721,
-            tokenAddress: MOCK_NFT_ADDRESS,
-            tokenId: BigInt(1),
+            tokenAddress: selectedNfts[0].contract.address as `0x${string}`,
+            tokenId: BigInt(selectedNfts[0].tokenId),
             amount: BigInt(0),
           },
           {
@@ -331,8 +352,17 @@ const Step3 = ({
       });
     } catch (error) {
       console.error(error);
+      toast.error("取引の作成に失敗しました");
     }
-  }, [writeContract, chainId, counterPartyAddress]);
+  }, [writeContract, chainId, counterPartyAddress, selectedNfts]);
+
+  useEffect(() => {
+    if (approveHash) {
+      toast.success("NFTの承認が完了しました");
+      setIsApproved(true);
+      setIsApproveDialogOpen(false);
+    }
+  }, [approveHash]);
 
   useEffect(() => {
     if (receipt) {
@@ -366,10 +396,27 @@ const Step3 = ({
         <Button onClick={() => setStep(2)} className="w-1/3">
           <ArrowLeft className="mr-2 h-4 w-4" /> 戻る
         </Button>
-        <Button onClick={handleInitiateTrade} className="w-2/3" disabled={isPending}>
-          {isPending ? "取引の作成中..." : "取引の作成"}
+        <Button onClick={() => setIsApproveDialogOpen(true)} className="w-2/3" disabled={isApproved}>
+          {isApproved ? "NFT承認済み" : "NFTの承認"}
         </Button>
       </div>
+      <Button onClick={handleInitiateTrade} className="w-full" disabled={!isApproved || isPending}>
+        {isPending ? "取引の作成中..." : "取引の作成"}
+      </Button>
+
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>NFTの承認</DialogTitle>
+            <DialogDescription>
+              エスクローコントラクトにNFTの移動を許可します。この操作は取引を開始する前に必要です。
+            </DialogDescription>
+          </DialogHeader>
+          <Button onClick={handleApprove} disabled={isApprovePending}>
+            {isApprovePending ? "承認処理中..." : "NFTを承認"}
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
