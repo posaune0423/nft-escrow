@@ -24,6 +24,8 @@ export function getNetworkFromChainId(chainId: number): Network | undefined {
       return Network.MATIC_MAINNET;
     case 80001:
       return Network.MATIC_MUMBAI;
+    case 80002:
+      return Network.MATIC_AMOY;
     case 592:
       return Network.ASTAR_MAINNET;
     case 1101:

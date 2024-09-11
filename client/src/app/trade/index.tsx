@@ -1,10 +1,15 @@
 import { Layout } from "@/components/Layout";
-import { useAccount, useChainId } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt} from "wagmi";
+import { abi } from '@/constants/abi';
+import { parseEther } from "viem";
 import { Alchemy, OwnedNft } from "alchemy-sdk";
 import { useEffect, useMemo, useState } from "react";
 import { getNetworkFromChainId } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Clipboard, Check } from "lucide-react";
+
+const contractAddress = '0x398591598e17aad0954e082e3e06f2fff634c9c6';
+
 
 const Step1 = ({ nfts, selectMyNft }: { nfts: OwnedNft[]; selectMyNft: (nft: OwnedNft) => void }) => {
   return (
@@ -49,6 +54,52 @@ const Step2 = ({ nfts, selectTradeNft }: { nfts: OwnedNft[]; selectTradeNft: (nf
 };
 
 const Step3 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (step: number) => void }) => {
+  const { address } = useAccount();
+  const { writeContract, data: hash, error, isPending } = useWriteContract();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  const handleCreateTrade = async () => {
+    if (!address) {
+      console.error('ウォレットが接続されていません');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await writeContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: 'initiateTrade',
+        args: [
+          `0x${selectedNfts[1].contract.address.slice(2)}` as `0x${string}`, // counte rparty's address
+          {
+            tokenType: 0, // 0: ERC721, 1: ERC20
+            tokenAddress: `0x${selectedNfts[0].contract.address.slice(2)}` as `0x${string}`,
+            tokenId: BigInt(selectedNfts[0].tokenId),
+            amount: BigInt(1),
+          },
+          {
+            tokenType: 0,
+            tokenAddress: `0x${selectedNfts[1].contract.address.slice(2)}` as `0x${string}`,
+            tokenId: BigInt(selectedNfts[1].tokenId),
+            amount: BigInt(1),
+          },
+        ],
+      });
+    } catch (error) {
+      console.error('取引作成エラー:', error);
+      setIsLoading(false);
+    }
+  };
+
+  if (isConfirmed) {
+    setStep(4);
+  }
+
   return (
     <main className="flex flex-col min-h-[calc(100dvh-160px)] space-y-4">
       <div className="flex items-center justify-around px-4 h-28">
@@ -63,16 +114,27 @@ const Step3 = ({ selectedNfts, setStep }: { selectedNfts: OwnedNft[]; setStep: (
         ))}
       </div>
       <div className="flex items-center justify-center h-full px-4">
-        <Button onClick={() => setStep(4)} className="w-full h-10">
-          取引の作成
+        <Button 
+          onClick={handleCreateTrade} 
+          className="w-full h-10"
+          disabled={isLoading || isPending || isConfirming}
+        >
+          {isLoading || isPending ? '処理中...' : isConfirming ? '確認中...' : '取引の作成'}
         </Button>
       </div>
+      {error && <p className="text-red-500">エラー: {error.message}</p>}
     </main>
   );
 };
 
 const Step4 = () => {
   const [copied, setCopied] = useState(false);
+  const { data: tradeCounter } = useReadContract({
+    address: contractAddress,
+    abi: abi,
+    functionName: 'tradeCounter',
+  });
+
   const onCopy = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
@@ -85,7 +147,9 @@ const Step4 = () => {
         <h1 className="text-3xl font-bold">取引リンクをshare！</h1>
         <div onClick={onCopy} className="flex items-center space-x-2">
           {copied ? <Check size={16} /> : <Clipboard size={16} />}
-          <p className="bg-gray-100 p-2 rounded-md text-blue-500">https://trade.example.com</p>
+          <p className="bg-gray-100 p-2 rounded-md text-blue-500">
+            {`https://trade.example.com/${tradeCounter}`}
+          </p>
         </div>
       </div>
     </main>
