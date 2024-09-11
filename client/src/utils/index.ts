@@ -89,9 +89,10 @@ export function getNetworkFromChainId(chainId: number): Network {
   }
 }
 
-export const extractError = (errorText: string) => {
+export const extractError = (error: unknown) => {
+  const errorText = error instanceof Error ? error.message : String(error);
   const detailsMatch = errorText.match(/Details:\s*(.*?)(?:\n|$)/);
-  return detailsMatch ? detailsMatch[1].trim() : null;
+  return detailsMatch ? detailsMatch[1].trim() : "予期せぬエラーが発生しました";
 };
 
 export function parseNftUrl(url: string): { contractAddress: string; tokenId: string } | null {

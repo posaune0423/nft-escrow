@@ -1,9 +1,9 @@
-import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract, useReadContract } from "wagmi";
 import { Alchemy, type Nft, type OwnedNft } from "alchemy-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { extractError, getNetworkFromChainId } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { Clipboard, Check, ArrowLeft } from "lucide-react";
+import { Clipboard, Check, ArrowLeft, Loader2, X } from "lucide-react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Layout } from "@/components/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { escrowABI, erc721ABI } from "@/constants/abi";
 import { CONTRACT_ADDRESS } from "@/constants/contract";
-import { MOCK_NFT_ADDRESS } from "@/constants/mock";
 import { TokenType } from "@/types";
 import { type Address } from "viem";
 import { toast } from "sonner";
@@ -108,6 +107,7 @@ const Step1 = ({
 
 const Step2 = ({
   selectedNfts,
+  setSelectedNfts,
   setStep,
   counterPartyAddress,
   setCounterPartyAddress,
@@ -122,7 +122,8 @@ const Step2 = ({
   amount,
   setAmount,
 }: {
-  selectedNfts: OwnedNft[];
+  selectedNfts: (OwnedNft | Nft)[];
+  setSelectedNfts: (nfts: (OwnedNft | Nft)[]) => void;
   setStep: (step: number) => void;
   counterPartyAddress: Address;
   setCounterPartyAddress: (address: Address) => void;
@@ -174,14 +175,30 @@ const Step2 = ({
     }
   }, [alchemy, exchangeType, contractAddress, tokenId]);
 
+  useEffect(() => {
+    handleNftPreview();
+  }, [handleNftPreview]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (exchangeType === "NFT" && previewNft) {
+      setSelectedNfts([selectedNfts[0], previewNft]);
+    } else if (exchangeType === "FT") {
+      // FTの場合は、ダミーのNFTオブジェクトを作成
+      const ftObject = {
+        contract: { address: contractAddress },
+        tokenId: "0",
+        name: `FT (${amount})`,
+        image: { cachedUrl: "", thumbnailUrl: "" },
+      } as Nft;
+      setSelectedNfts([selectedNfts[0], ftObject]);
+    }
     setStep(3);
   };
 
   const isFormValid = () => {
     if (exchangeType === "NFT") {
-      return contractAddress !== "" && tokenId !== "";
+      return contractAddress !== "" && tokenId !== "" && previewNft !== null;
     } else {
       return contractAddress !== "" && amount !== "" && parseFloat(amount) > 0;
     }
@@ -192,11 +209,13 @@ const Step2 = ({
       <h2 className="text-2xl font-bold">交換条件を入力してください</h2>
 
       <img
-        src={selectedNfts[0].image.cachedUrl ?? selectedNfts[0].image.thumbnailUrl}
-        alt={selectedNfts[0].tokenId}
+        src={
+          (selectedNfts[0] as OwnedNft | Nft).image.cachedUrl ?? (selectedNfts[0] as OwnedNft | Nft).image.thumbnailUrl
+        }
+        alt={(selectedNfts[0] as OwnedNft | Nft).tokenId}
         className="w-32 h-32 object-cover rounded-lg shadow-md"
       />
-      <p className="text-sm text-gray-500">交換に出すNFT: {selectedNfts[0].name}</p>
+      <p className="text-sm text-gray-500">交換に出すNFT: {(selectedNfts[0] as OwnedNft | Nft).name}</p>
 
       <hr className="w-full border-gray-200 my-6" />
 
@@ -231,9 +250,6 @@ const Step2 = ({
               Token ID
               <Input id="tokenId" placeholder="Token ID" value={tokenId} readOnly />
             </Label>
-            <Button type="button" onClick={handleNftPreview} disabled={!contractAddress || !tokenId}>
-              NFTをプレビュー
-            </Button>
           </>
         ) : (
           <>
@@ -259,7 +275,7 @@ const Step2 = ({
           </>
         )}
 
-        {previewNft && (
+        {previewNft && exchangeType === "NFT" && (
           <div className="flex flex-col items-center">
             <img
               src={previewNft.image.cachedUrl ?? previewNft.image.thumbnailUrl}
@@ -274,7 +290,7 @@ const Step2 = ({
           相手のウォレットアドレス
           <Input
             id="counterPartyAddress"
-            placeholder="相手のウォレットアドレス"
+            placeholder="相手のウォレトアドレス"
             value={counterPartyAddress}
             onChange={(e) => setCounterPartyAddress(e.target.value as Address)}
           />
@@ -298,85 +314,141 @@ const Step3 = ({
   setStep,
   counterPartyAddress,
 }: {
-  selectedNfts: OwnedNft[];
+  selectedNfts: (OwnedNft | Nft)[];
   setStep: (step: number) => void;
   counterPartyAddress: Address;
 }) => {
   const chainId = useChainId();
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [isApproved, setIsApproved] = useState(false);
 
-  const { data: approveHash, writeContract: writeApprove, isPending: isApprovePending } = useWriteContract();
+  const {
+    data: approveHash,
+    writeContract: writeApprove,
+    isPending: isApprovePending,
+    error: approveError,
+  } = useWriteContract();
+  const { data: approveReceipt } = useWaitForTransactionReceipt({ hash: approveHash });
 
-  const { data: hash, error, writeContract, isPending } = useWriteContract();
-  const { data: receipt } = useWaitForTransactionReceipt({ hash });
+  const {
+    data: tradeHash,
+    writeContract: writeTrade,
+    isPending: isTradePending,
+    error: tradeError,
+  } = useWriteContract();
+  const { data: tradeReceipt } = useWaitForTransactionReceipt({ hash: tradeHash });
+
+  const { data: approvedAddress } = useReadContract({
+    abi: erc721ABI,
+    address: (selectedNfts[0] as OwnedNft | Nft).contract.address as Address,
+    functionName: "getApproved",
+    args: [BigInt((selectedNfts[0] as OwnedNft | Nft).tokenId || "0")],
+  });
+
+  const isApproved = useMemo(() => {
+    return approvedAddress === CONTRACT_ADDRESS[getNetworkFromChainId(chainId)];
+  }, [approvedAddress, chainId]);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [approveStatus, setApproveStatus] = useState<"idle" | "pending" | "success" | "error">(
+    isApproved ? "success" : "idle"
+  );
+  const [tradeStatus, setTradeStatus] = useState<"idle" | "pending" | "success" | "error">("idle");
 
   const handleApprove = useCallback(() => {
     if (!chainId || !selectedNfts[0]) return;
     try {
+      setApproveStatus("pending");
       writeApprove({
         abi: erc721ABI,
-        address: selectedNfts[0].contract.address as `0x${string}`,
+        address: (selectedNfts[0] as OwnedNft | Nft).contract.address as Address,
         functionName: "approve",
-        args: [CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!, BigInt(selectedNfts[0].tokenId)],
+        args: [CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!, BigInt((selectedNfts[0] as OwnedNft | Nft).tokenId)],
       });
     } catch (error) {
       console.error(error);
+      setApproveStatus("error");
       toast.error("NFTの承認に失敗しました");
     }
   }, [writeApprove, chainId, selectedNfts]);
 
   const handleInitiateTrade = useCallback(() => {
-    if (!chainId || !counterPartyAddress || !selectedNfts[0]) return;
+    if (!chainId || !counterPartyAddress || !selectedNfts[0] || !selectedNfts[1]) {
+      console.error(chainId, counterPartyAddress, selectedNfts[0], selectedNfts[1]);
+      return;
+    }
+
+    const myAsset = {
+      tokenType: TokenType.ERC721,
+      tokenAddress: (selectedNfts[0] as OwnedNft | Nft).contract.address as Address,
+      tokenId: BigInt((selectedNfts[0] as OwnedNft | Nft).tokenId),
+      amount: BigInt(0),
+    };
+    const counterPartyAsset = {
+      tokenType: TokenType.ERC721,
+      tokenAddress: (selectedNfts[1] as OwnedNft | Nft).contract.address as Address,
+      tokenId: BigInt((selectedNfts[1] as OwnedNft | Nft).tokenId),
+      amount: BigInt(0),
+    };
+    console.log(myAsset, counterPartyAsset);
     try {
-      writeContract({
+      console.log("initiateTrade");
+      setTradeStatus("pending");
+      writeTrade({
         chainId,
         address: CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!,
         abi: escrowABI,
         functionName: "initiateTrade",
-        args: [
-          counterPartyAddress,
-          {
-            tokenType: TokenType.ERC721,
-            tokenAddress: selectedNfts[0].contract.address as `0x${string}`,
-            tokenId: BigInt(selectedNfts[0].tokenId),
-            amount: BigInt(0),
-          },
-          {
-            tokenType: TokenType.ERC721,
-            tokenAddress: MOCK_NFT_ADDRESS,
-            tokenId: BigInt(1),
-            amount: BigInt(0),
-          },
-        ],
+        args: [counterPartyAddress, myAsset, counterPartyAsset],
       });
     } catch (error) {
       console.error(error);
-      toast.error("取引の作成に失敗しました");
+      setTradeStatus("error");
+      toast.error(extractError(error));
     }
-  }, [writeContract, chainId, counterPartyAddress, selectedNfts]);
+  }, [writeTrade, chainId, counterPartyAddress, selectedNfts]);
+
+  const handleCreateTrade = useCallback(() => {
+    setIsDialogOpen(true);
+    if (isApproved) {
+      setApproveStatus("success");
+      handleInitiateTrade();
+    } else {
+      handleApprove();
+    }
+  }, [isApproved, handleApprove, handleInitiateTrade]);
 
   useEffect(() => {
-    if (approveHash) {
+    if (approveReceipt) {
+      setApproveStatus("success");
       toast.success("NFTの承認が完了しました");
-      setIsApproved(true);
-      setIsApproveDialogOpen(false);
+      handleInitiateTrade();
     }
-  }, [approveHash]);
+  }, [approveReceipt, handleInitiateTrade]);
 
   useEffect(() => {
-    if (receipt) {
-      console.log(receipt);
-      setStep(4);
+    if (tradeReceipt) {
+      setTradeStatus("success");
+      toast.success("取引の作成が完了しました");
+      setTimeout(() => {
+        setIsDialogOpen(false);
+        setStep(4);
+      }, 2000);
     }
-  }, [receipt, setStep]);
+  }, [tradeReceipt, setStep]);
 
   useEffect(() => {
-    if (error) {
-      console.error(error);
-      toast.error(extractError(error.message));
+    if (approveError) {
+      setApproveStatus("error");
+      toast.error(extractError(approveError));
     }
-  }, [error]);
+  }, [approveError]);
+
+  useEffect(() => {
+    if (tradeError) {
+      setTradeStatus("error");
+      console.error(tradeError);
+      toast.error(extractError(tradeError));
+    }
+  }, [tradeError]);
 
   return (
     <div className="flex flex-col items-center justify-center px-4 space-y-8 w-full max-w-3xl mx-auto">
@@ -396,25 +468,35 @@ const Step3 = ({
         <Button onClick={() => setStep(2)} className="w-1/3">
           <ArrowLeft className="mr-2 h-4 w-4" /> 戻る
         </Button>
-        <Button onClick={() => setIsApproveDialogOpen(true)} className="w-2/3" disabled={isApproved}>
-          {isApproved ? "NFT承認済み" : "NFTの承認"}
+        <Button onClick={handleCreateTrade} className="w-2/3" disabled={isApprovePending || isTradePending}>
+          取引の作成
         </Button>
       </div>
-      <Button onClick={handleInitiateTrade} className="w-full" disabled={!isApproved || isPending}>
-        {isPending ? "取引の作成中..." : "取引の作成"}
-      </Button>
 
-      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-        <DialogContent>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="!max-w-[90%] !mx-auto rounded-md">
           <DialogHeader>
-            <DialogTitle>NFTの承認</DialogTitle>
-            <DialogDescription>
-              エスクローコントラクトにNFTの移動を許可します。この操作は取引を開始する前に必要です。
-            </DialogDescription>
+            <DialogTitle>取引の作成</DialogTitle>
+            <DialogDescription>NFTの承認と取引の作成を行っています。</DialogDescription>
           </DialogHeader>
-          <Button onClick={handleApprove} disabled={isApprovePending}>
-            {isApprovePending ? "承認処理中..." : "NFTを承認"}
-          </Button>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <span>1. NFTの承認</span>
+              <div className="w-6 h-6">
+                {approveStatus === "pending" && <Loader2 className="animate-spin" />}
+                {approveStatus === "success" && <Check className="text-green-500" />}
+                {approveStatus === "error" && <X className="text-red-500" />}
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span>2. 取引の作成</span>
+              <div className="w-6 h-6">
+                {tradeStatus === "pending" && approveStatus === "success" && <Loader2 className="animate-spin" />}
+                {tradeStatus === "success" && <Check className="text-green-500" />}
+                {tradeStatus === "error" && <X className="text-red-500" />}
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -449,7 +531,7 @@ const Step4 = ({ setStep }: { setStep: (step: number) => void }) => {
 export const TradePage = () => {
   const [step, setStep] = useState<number>(1);
   const [nfts, setNfts] = useState<OwnedNft[]>([]);
-  const [selectedNfts, setSelectedNfts] = useState<OwnedNft[]>([]);
+  const [selectedNfts, setSelectedNfts] = useState<(OwnedNft | Nft)[]>([]);
   const chainId = useChainId();
   const [counterPartyAddress, setCounterPartyAddress] = useState<Address>("0x64473e07c7A53a632DDE287CA2e6c3c1aC15Af29");
   const [exchangeType, setExchangeType] = useState<"NFT" | "FT">("NFT");
@@ -490,6 +572,7 @@ export const TradePage = () => {
         {step === 2 && (
           <Step2
             selectedNfts={selectedNfts}
+            setSelectedNfts={setSelectedNfts}
             setStep={setStep}
             counterPartyAddress={counterPartyAddress}
             setCounterPartyAddress={setCounterPartyAddress}
