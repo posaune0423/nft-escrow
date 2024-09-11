@@ -88,3 +88,8 @@ export function getNetworkFromChainId(chainId: number): Network {
       throw new Error(`Unsupported chainId: ${chainId}`);
   }
 }
+
+export const extractError = (errorText: string) => {
+  const detailsMatch = errorText.match(/Details:\s*(.*?)(?:\n|$)/);
+  return detailsMatch ? detailsMatch[1].trim() : null;
+};
