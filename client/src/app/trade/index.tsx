@@ -47,6 +47,17 @@ const Step1 = ({
   address: string | undefined;
 }) => {
   const { openConnectModal } = useConnectModal();
+  const [search, setSearch] = useState("");
+
+  // 検索文字列が空の場合は全てのNFTを、そうでない場合は検索文字列を含むNFTをフィルタリング
+  const filteredNfts = useMemo(() => {
+    if (!search.trim()) return nfts;
+    const searchLower = search.toLowerCase();
+    return nfts.filter(
+      (nft) => nft.name?.toLowerCase().includes(searchLower) || nft.description?.toLowerCase().includes(searchLower)
+    );
+  }, [nfts, search]);
+
   if (!address) {
     return (
       <div className="flex flex-col items-center justify-center px-4 space-y-4">
@@ -61,6 +72,7 @@ const Step1 = ({
   return (
     <div className="flex flex-col items-center justify-center px-4 space-y-4">
       <h2 className="text-2xl font-bold">交換するNFTを選択してください</h2>
+      <Input placeholder="NFTを検索" value={search} onChange={(e) => setSearch(e.target.value)} />
       {nfts.length === 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-3xl">
           {Array.from({ length: 8 }).map((_, index) => (
@@ -73,7 +85,7 @@ const Step1 = ({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-3xl">
-          {nfts.map((nft) => (
+          {filteredNfts.map((nft) => (
             <div
               key={`${nft.contract.address}-${nft.tokenId}`}
               className="flex justify-center cursor-pointer hover:opacity-80 transition-opacity"
@@ -81,7 +93,7 @@ const Step1 = ({
             >
               <img
                 src={nft.image.cachedUrl ?? nft.image.thumbnailUrl}
-                alt={nft.tokenId}
+                alt={nft.name}
                 className="w-full h-auto rounded-lg shadow-md"
               />
             </div>
@@ -263,14 +275,13 @@ const Step3 = ({
     <div className="flex flex-col items-center justify-center px-4 space-y-8 w-full max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold">選択したNFTの確認</h2>
       <div className="flex justify-around w-full">
-        {selectedNfts.map((nft, index) => (
+        {selectedNfts.map((nft) => (
           <div key={`${nft.contract.address}-${nft.tokenId}`} className="flex flex-col items-center">
             <img
               src={nft.image.cachedUrl ?? nft.image.thumbnailUrl}
               alt={nft.tokenId}
               className="w-32 h-32 object-cover rounded-lg shadow-md"
             />
-            <span className="mt-2 text-sm font-semibold">{index === 0 ? "自分のNFT" : "交換NFT"}</span>
           </div>
         ))}
       </div>

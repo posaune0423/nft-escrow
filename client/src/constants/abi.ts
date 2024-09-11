@@ -23,6 +23,20 @@ export const abi = [
   },
   {
     type: "function",
+    name: "getTradeStatus",
+    inputs: [{ name: "_tradeId", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "uint8", internalType: "enum FlexibleEscrow.TradeStatus" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getTradesByAddress",
+    inputs: [{ name: "_user", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "uint256[]", internalType: "uint256[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "initiateTrade",
     inputs: [
       { name: "_counterparty", type: "address", internalType: "address" },
@@ -93,6 +107,13 @@ export const abi = [
     name: "tradeCounter",
     inputs: [],
     outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "tradeStatus",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "uint8", internalType: "enum FlexibleEscrow.TradeStatus" }],
     stateMutability: "view",
   },
   {
