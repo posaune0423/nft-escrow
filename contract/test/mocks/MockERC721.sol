@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract MockERC721 is ERC721 {
     uint256 private _tokenIdCounter;
@@ -33,7 +34,7 @@ contract MockERC721 is ERC721 {
     ) public view override returns (string memory) {
         _requireOwned(tokenId);
 
-        return baseURI;
+        return string.concat(baseURI, Strings.toString(tokenId));
     }
 
     function mint(address to, uint256 tokenId) public {
