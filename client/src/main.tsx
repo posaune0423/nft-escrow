@@ -35,8 +35,11 @@ createRoot(document.getElementById("root")!).render(
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
+          appInfo={{
+            appName: APP_NAME,
+          }}
           theme={lightTheme({
-            accentColor: "#09090b",
+            accentColor: "#E11D48",
             accentColorForeground: "#FAFAFA",
             borderRadius: "medium",
           })}
