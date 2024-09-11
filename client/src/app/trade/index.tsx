@@ -234,7 +234,7 @@ const Step2 = ({
         {exchangeType === "NFT" ? (
           <>
             <Label htmlFor="nftUrl">
-              NFT URL (OpenSea, Rarible, Moor等)
+              Marketplace URL (OpenSea, Rarible, Moor等)
               <Input
                 id="nftUrl"
                 placeholder="NFT URL"
@@ -388,7 +388,7 @@ const Step3 = ({
       tokenId: BigInt((selectedNfts[1] as OwnedNft | Nft).tokenId),
       amount: BigInt(0),
     };
-    console.log(myAsset, counterPartyAsset);
+    console.log({counterPartyAddress,myAsset, counterPartyAsset});
     try {
       console.log("initiateTrade");
       setTradeStatus("pending");
