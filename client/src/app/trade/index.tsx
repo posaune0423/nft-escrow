@@ -1,9 +1,9 @@
-import { useAccount, useChainId, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { Alchemy, type Nft, type OwnedNft } from "alchemy-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { extractError, getNetworkFromChainId } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { Clipboard, Check } from "lucide-react";
+import { Clipboard, Check, ArrowLeft } from "lucide-react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Layout } from "@/components/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,7 @@ import { MOCK_NFT_ADDRESS } from "@/constants/mock";
 import { TokenType } from "@/types";
 import { type Address } from "viem";
 import { toast } from "sonner";
+import { parseNftUrl } from "@/utils";
 
 const StepFlow = ({ currentStep }: { currentStep: number }) => {
   const steps = ["自分のNFTを選択", "交換条件の入力", "確認", "相手に共有"];
@@ -109,16 +110,32 @@ const Step2 = ({
   setStep,
   counterPartyAddress,
   setCounterPartyAddress,
+  exchangeType,
+  setExchangeType,
+  nftUrl,
+  setNftUrl,
+  contractAddress,
+  setContractAddress,
+  tokenId,
+  setTokenId,
+  amount,
+  setAmount,
 }: {
   selectedNfts: OwnedNft[];
   setStep: (step: number) => void;
   counterPartyAddress: Address;
   setCounterPartyAddress: (address: Address) => void;
+  exchangeType: "NFT" | "FT";
+  setExchangeType: (type: "NFT" | "FT") => void;
+  nftUrl: string;
+  setNftUrl: (url: string) => void;
+  contractAddress: string;
+  setContractAddress: (address: string) => void;
+  tokenId: string;
+  setTokenId: (id: string) => void;
+  amount: string;
+  setAmount: (amount: string) => void;
 }) => {
-  const [exchangeType, setExchangeType] = useState<"NFT" | "FT">("NFT");
-  const [contractAddress, setContractAddress] = useState("");
-  const [tokenId, setTokenId] = useState("");
-  const [amount, setAmount] = useState("");
   const [previewNft, setPreviewNft] = useState<Nft | null>(null);
   const chainId = useChainId();
 
@@ -131,18 +148,41 @@ const Step2 = ({
     [chainId]
   );
 
+  const handleNftUrlChange = useCallback((url: string) => {
+    setNftUrl(url);
+    if (url.trim() === "") return;
+    const parsed = parseNftUrl(url);
+    if (parsed) {
+      setContractAddress(parsed.contractAddress);
+      setTokenId(parsed.tokenId);
+      toast.success("NFT情報を自動入力しました");
+    } else {
+      toast.error("URLからNFT情報を抽出できませんでした");
+    }
+  }, []);
+
+  const handleNftPreview = useCallback(async () => {
+    if (exchangeType === "NFT" && contractAddress && tokenId) {
+      try {
+        const metadata = await alchemy.nft.getNftMetadata(contractAddress, tokenId);
+        setPreviewNft(metadata);
+      } catch (error) {
+        console.error("Failed to fetch NFT metadata:", error);
+        toast.error("NFTのメタデータの取得に失敗しました");
+      }
+    }
+  }, [alchemy, exchangeType, contractAddress, tokenId]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission logic here
     setStep(3);
   };
 
-  const handleNftPreview = async () => {
-    if (exchangeType === "NFT" && contractAddress && tokenId) {
-      // Fetch NFT preview using Alchemy SDK or similar service
-      // This is a placeholder and should be replaced with actual API call
-      const metadata = await alchemy.nft.getNftMetadata(contractAddress, tokenId);
-      setPreviewNft(metadata);
+  const isFormValid = () => {
+    if (exchangeType === "NFT") {
+      return contractAddress !== "" && tokenId !== "";
+    } else {
+      return contractAddress !== "" && amount !== "" && parseFloat(amount) > 0;
     }
   };
 
@@ -159,7 +199,7 @@ const Step2 = ({
 
       <hr className="w-full border-gray-200 my-6" />
 
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 flex flex-col">
         <RadioGroup defaultValue="NFT" onValueChange={(value) => setExchangeType(value as "NFT" | "FT")}>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="NFT" id="nft" />
@@ -171,22 +211,51 @@ const Step2 = ({
           </div>
         </RadioGroup>
 
-        <Input
-          placeholder="Contract Address"
-          value={contractAddress}
-          onChange={(e) => setContractAddress(e.target.value)}
-        />
-
         {exchangeType === "NFT" ? (
-          <Input placeholder="Token ID" value={tokenId} onChange={(e) => setTokenId(e.target.value)} />
+          <>
+            <Label htmlFor="nftUrl">
+              NFT URL (OpenSea, Rarible, Moor等)
+              <Input
+                id="nftUrl"
+                placeholder="NFT URL"
+                value={nftUrl}
+                onChange={(e) => handleNftUrlChange(e.target.value)}
+              />
+            </Label>
+            <Label htmlFor="contractAddress">
+              Contract Address
+              <Input id="contractAddress" placeholder="Contract Address" value={contractAddress} readOnly />
+            </Label>
+            <Label htmlFor="tokenId">
+              Token ID
+              <Input id="tokenId" placeholder="Token ID" value={tokenId} readOnly />
+            </Label>
+            <Button type="button" onClick={handleNftPreview} disabled={!contractAddress || !tokenId}>
+              NFTをプレビュー
+            </Button>
+          </>
         ) : (
-          <Input placeholder="Amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        )}
-
-        {exchangeType === "NFT" && (
-          <Button type="button" onClick={handleNftPreview}>
-            NFTをプレビュー
-          </Button>
+          <>
+            <Label htmlFor="contractAddress">
+              Contract Address
+              <Input
+                id="contractAddress"
+                placeholder="Contract Address"
+                value={contractAddress}
+                onChange={(e) => setContractAddress(e.target.value)}
+              />
+            </Label>
+            <Label htmlFor="amount">
+              Amount
+              <Input
+                id="amount"
+                placeholder="Amount"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </Label>
+          </>
         )}
 
         {previewNft && (
@@ -200,15 +269,24 @@ const Step2 = ({
           </div>
         )}
 
-        <Input
-          placeholder="相手のウォレットアドレス"
-          value={counterPartyAddress}
-          onChange={(e) => setCounterPartyAddress(e.target.value as Address)}
-        />
+        <Label htmlFor="counterPartyAddress">
+          相手のウォレットアドレス
+          <Input
+            id="counterPartyAddress"
+            placeholder="相手のウォレットアドレス"
+            value={counterPartyAddress}
+            onChange={(e) => setCounterPartyAddress(e.target.value as Address)}
+          />
+        </Label>
 
-        <Button type="submit" className="w-full h-14">
-          次へ
-        </Button>
+        <div className="flex justify-between w-full space-x-4">
+          <Button type="button" onClick={() => setStep(1)} className="w-1/3">
+            <ArrowLeft className="mr-2 h-4 w-4" /> 戻る
+          </Button>
+          <Button type="submit" className="w-2/3" disabled={!isFormValid()}>
+            次へ
+          </Button>
+        </div>
       </form>
     </div>
   );
@@ -225,11 +303,10 @@ const Step3 = ({
 }) => {
   const chainId = useChainId();
   const { data: hash, error, writeContract, isPending } = useWriteContract();
-  // const { data: receipt, isPending } = useWaitForTransactionReceipt({ hash });
+  const { data: receipt } = useWaitForTransactionReceipt({ hash });
 
   const handleInitiateTrade = useCallback(() => {
     if (!chainId || !counterPartyAddress) return;
-    console.log(chainId, counterPartyAddress);
     try {
       writeContract({
         chainId,
@@ -239,16 +316,16 @@ const Step3 = ({
         args: [
           counterPartyAddress,
           {
-            tokenType: TokenType.ERC721, // 0 for ERC721, 1 for ERC20, etc.
-            tokenAddress: MOCK_NFT_ADDRESS, // NFT contract address
+            tokenType: TokenType.ERC721,
+            tokenAddress: MOCK_NFT_ADDRESS,
             tokenId: BigInt(1),
-            amount: BigInt(0), // 1 for NFTs
+            amount: BigInt(0),
           },
           {
-            tokenType: TokenType.ERC721, // Adjust based on what you're trading for
-            tokenAddress: MOCK_NFT_ADDRESS, // Contract address of desired token
-            tokenId: BigInt(1), // 0 if trading for ERC20, or specific tokenId for NFT
-            amount: BigInt(0), // 0 for NFT, or amount for ERC20
+            tokenType: TokenType.ERC721,
+            tokenAddress: MOCK_NFT_ADDRESS,
+            tokenId: BigInt(1),
+            amount: BigInt(0),
           },
         ],
       });
@@ -258,11 +335,11 @@ const Step3 = ({
   }, [writeContract, chainId, counterPartyAddress]);
 
   useEffect(() => {
-    if (hash) {
-      console.log(hash);
+    if (receipt) {
+      console.log(receipt);
       setStep(4);
     }
-  }, [hash, setStep]);
+  }, [receipt, setStep]);
 
   useEffect(() => {
     if (error) {
@@ -285,14 +362,19 @@ const Step3 = ({
           </div>
         ))}
       </div>
-      <Button onClick={handleInitiateTrade} className="w-full h-16 text-lg rounded-3xl" disabled={isPending}>
-        {isPending ? "取引の作成中..." : "取引の作成"}
-      </Button>
+      <div className="flex justify-between w-full space-x-4">
+        <Button onClick={() => setStep(2)} className="w-1/3">
+          <ArrowLeft className="mr-2 h-4 w-4" /> 戻る
+        </Button>
+        <Button onClick={handleInitiateTrade} className="w-2/3" disabled={isPending}>
+          {isPending ? "取引の作成中..." : "取引の作成"}
+        </Button>
+      </div>
     </div>
   );
 };
 
-const Step4 = () => {
+const Step4 = ({ setStep }: { setStep: (step: number) => void }) => {
   const [copied, setCopied] = useState(false);
   const onCopy = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -310,6 +392,9 @@ const Step4 = () => {
         {copied ? <Check size={20} className="text-green-500" /> : <Clipboard size={20} className="text-blue-500" />}
         <p className="text-blue-500 font-medium">https://escrow.example.com/trade/hogehoge</p>
       </div>
+      <Button onClick={() => setStep(1)} className="w-full">
+        <ArrowLeft className="mr-2 h-4 w-4" /> 新しい取引を開始
+      </Button>
     </div>
   );
 };
@@ -320,6 +405,11 @@ export const TradePage = () => {
   const [selectedNfts, setSelectedNfts] = useState<OwnedNft[]>([]);
   const chainId = useChainId();
   const [counterPartyAddress, setCounterPartyAddress] = useState<Address>("0x64473e07c7A53a632DDE287CA2e6c3c1aC15Af29");
+  const [exchangeType, setExchangeType] = useState<"NFT" | "FT">("NFT");
+  const [nftUrl, setNftUrl] = useState("");
+  const [contractAddress, setContractAddress] = useState("");
+  const [tokenId, setTokenId] = useState("");
+  const [amount, setAmount] = useState("");
 
   const { address } = useAccount();
   const alchemy = useMemo(
@@ -347,21 +437,31 @@ export const TradePage = () => {
 
   return (
     <Layout>
-      <main className="flex flex-col min-h-[calc(100dvh-160px)] py-8">
+      <main className="flex flex-col min-h-[calc(100dvh-160px)] py-8 max-w-md mx-auto">
         <StepFlow currentStep={step} />
         {step === 1 && <Step1 nfts={nfts} selectMyNft={selectMyNft} address={address} />}
         {step === 2 && (
           <Step2
             selectedNfts={selectedNfts}
             setStep={setStep}
-            setCounterPartyAddress={setCounterPartyAddress}
             counterPartyAddress={counterPartyAddress}
+            setCounterPartyAddress={setCounterPartyAddress}
+            exchangeType={exchangeType}
+            setExchangeType={setExchangeType}
+            nftUrl={nftUrl}
+            setNftUrl={setNftUrl}
+            contractAddress={contractAddress}
+            setContractAddress={setContractAddress}
+            tokenId={tokenId}
+            setTokenId={setTokenId}
+            amount={amount}
+            setAmount={setAmount}
           />
         )}
         {step === 3 && (
           <Step3 selectedNfts={selectedNfts} setStep={setStep} counterPartyAddress={counterPartyAddress} />
         )}
-        {step === 4 && <Step4 />}
+        {step === 4 && <Step4 setStep={setStep} />}
       </main>
     </Layout>
   );

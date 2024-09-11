@@ -8,7 +8,7 @@ import { TradePage } from "./app/trade";
 import { TermsOfServicePage } from "./app/terms-of-service";
 import { getDefaultConfig, RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { mainnet, optimism, arbitrum, base, polygon } from "wagmi/chains";
+import { polygonAmoy } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { APP_NAME } from "./constants";
 import { Toaster } from "./components/ui/sonner";
@@ -31,7 +31,8 @@ const router = createBrowserRouter([
 const config = getDefaultConfig({
   appName: APP_NAME,
   projectId: "YOUR_PROJECT_ID",
-  chains: [polygon, optimism, arbitrum, base, mainnet],
+  // chains: [polygon, optimism, arbitrum, base, mainnet],
+  chains: [polygonAmoy],
 });
 
 const queryClient = new QueryClient();

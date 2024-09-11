@@ -93,3 +93,24 @@ export const extractError = (errorText: string) => {
   const detailsMatch = errorText.match(/Details:\s*(.*?)(?:\n|$)/);
   return detailsMatch ? detailsMatch[1].trim() : null;
 };
+
+export function parseNftUrl(url: string): { contractAddress: string; tokenId: string } | null {
+  try {
+    const parsedUrl = new URL(url);
+    const pathParts = parsedUrl.pathname.split("/").filter((part) => part !== "");
+
+    // 最後の2つの部分を取得
+    const contractAddress = pathParts[pathParts.length - 2];
+    const tokenId = pathParts[pathParts.length - 1];
+
+    // contractAddressが16進数形式で、tokenIdが存在する場合に結果を返す
+    if (contractAddress && tokenId && /^0x[a-fA-F0-9]+$/.test(contractAddress)) {
+      return { contractAddress, tokenId };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Failed to parse NFT URL:", error);
+    return null;
+  }
+}

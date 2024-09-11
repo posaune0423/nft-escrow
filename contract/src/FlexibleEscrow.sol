@@ -76,7 +76,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
         address _counterparty,
         Asset memory _initiatorAsset,
         Asset memory _counterpartyAsset
-    ) external {
+    ) external returns (uint256) {
         require(
             _transferToEscrow(msg.sender, _initiatorAsset),
             "Failed to transfer initiator asset"
@@ -94,6 +94,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
         emit TradeInitiated(tradeCounter, msg.sender, _counterparty);
         tradeStatus[tradeCounter] = TradeStatus.Initiated;
         tradeCounter++;
+        return tradeCounter;
     }
 
     // Approve the trade by the initiator or counterparty
