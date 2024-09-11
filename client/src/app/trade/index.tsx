@@ -18,7 +18,7 @@ import { type Address } from "viem";
 import { toast } from "sonner";
 
 const StepFlow = ({ currentStep }: { currentStep: number }) => {
-  const steps = ["自分のNFT選択", "交換条件の入力", "確認", "取引リンク"];
+  const steps = ["自分のNFTを選択", "交換条件の入力", "確認", "相手に共有"];
   return (
     <div className="flex justify-between items-center w-full max-w-3xl mx-auto mb-8 px-4">
       {steps.map((step, index) => (
@@ -60,7 +60,7 @@ const Step1 = ({
 
   return (
     <div className="flex flex-col items-center justify-center px-4 space-y-4">
-      <h2 className="text-2xl font-bold">自分のNFTを選択してください</h2>
+      <h2 className="text-2xl font-bold">交換するNFTを選択してください</h2>
       {nfts.length === 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-3xl">
           {Array.from({ length: 8 }).map((_, index) => (
@@ -291,7 +291,7 @@ const Step4 = () => {
 
   return (
     <div className="flex flex-col items-center justify-center px-4 space-y-8 w-full max-w-3xl mx-auto">
-      <h2 className="text-2xl font-bold">取引リンクをshare!</h2>
+      <h2 className="text-2xl font-bold">取引リンクをシェア！</h2>
       <div
         onClick={onCopy}
         className="flex items-center space-x-2 bg-gray-100 p-3 rounded-md cursor-pointer hover:bg-gray-200 transition-colors"

@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { TopPage } from "./app";
 import { TradePage } from "./app/trade";
+import { TermsOfServicePage } from "./app/terms-of-service";
 import { getDefaultConfig, RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { polygonAmoy } from "wagmi/chains";
@@ -20,6 +21,10 @@ const router = createBrowserRouter([
   {
     path: "/trade",
     element: <TradePage />,
+  },
+  {
+    path: "/terms-of-service",
+    element: <TermsOfServicePage />,
   },
 ]);
 
