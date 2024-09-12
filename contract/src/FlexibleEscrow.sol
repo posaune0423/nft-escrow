@@ -47,20 +47,20 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
     }
 
     // Trade information storage
-    mapping(uint256 => Trade) public trades;
+    mapping(bytes32 => Trade) public trades;
     mapping(address => mapping(uint256 => bool)) public isNFTInEscrow;
-    mapping(uint256 => TradeStatus) public tradeStatus;
+    mapping(bytes32 => TradeStatus) public tradeStatus;
 
-    uint256 public tradeCounter;
+    mapping(address => bytes32[]) public userTrades;
 
     event TradeInitiated(
-        uint256 tradeId,
+        bytes32 tradeId,
         address initiator,
         address counterparty
     );
-    event TradeApproved(uint256 tradeId, address approver);
-    event TradeCompleted(uint256 tradeId);
-    event TradeCancelled(uint256 tradeId);
+    event TradeApproved(bytes32 tradeId, address approver);
+    event TradeCompleted(bytes32 tradeId);
+    event TradeCancelled(bytes32 tradeId);
 
     function onERC721Received(
         address,
@@ -76,13 +76,15 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
         address _counterparty,
         Asset memory _initiatorAsset,
         Asset memory _counterpartyAsset
-    ) external {
+    ) external returns (bytes32) {
         require(
             _transferToEscrow(msg.sender, _initiatorAsset),
             "Failed to transfer initiator asset"
         );
 
-        trades[tradeCounter] = Trade({
+        bytes32 tradeId = keccak256(abi.encodePacked(msg.sender, _counterparty, block.timestamp));
+
+        trades[tradeId] = Trade({
             initiator: msg.sender,
             counterparty: _counterparty,
             initiatorAsset: _initiatorAsset,
@@ -91,13 +93,16 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
             counterpartyApproved: false
         });
 
-        emit TradeInitiated(tradeCounter, msg.sender, _counterparty);
-        tradeStatus[tradeCounter] = TradeStatus.Initiated;
-        tradeCounter++;
+        userTrades[msg.sender].push(tradeId);
+        userTrades[_counterparty].push(tradeId);
+
+        emit TradeInitiated(tradeId, msg.sender, _counterparty);
+        tradeStatus[tradeId] = TradeStatus.Initiated;
+        return tradeId;
     }
 
     // Approve the trade by the initiator or counterparty
-    function approveTrade(uint256 tradeId) external nonReentrant {
+    function approveTrade(bytes32 tradeId) external nonReentrant {
         Trade storage trade = trades[tradeId];
         require(
             msg.sender == trade.counterparty,
@@ -125,7 +130,7 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
         }
     }
 
-    function _executeTrade(uint256 tradeId) internal {
+    function _executeTrade(bytes32 tradeId) internal {
         Trade storage trade = trades[tradeId];
         require(
             trade.initiatorApproved && trade.counterpartyApproved,
@@ -135,25 +140,14 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
         uint256 initiatorFee = calculateFee(trade.counterpartyAsset);
         uint256 counterpartyFee = calculateFee(trade.initiatorAsset);
 
-        _transferFromEscrow(
-            trade.counterparty,
-            trade.initiatorAsset,
-            counterpartyFee
-        );
-        _transferFromEscrow(
-            trade.initiator,
-            trade.counterpartyAsset,
-            initiatorFee
-        );
+        _transferFromEscrow(trade.initiator, trade.counterpartyAsset, initiatorFee);
+        _transferFromEscrow(trade.counterparty, trade.initiatorAsset, counterpartyFee);
 
         emit TradeCompleted(tradeId);
         tradeStatus[tradeId] = TradeStatus.Completed;
-        trade.initiatorApproved = false;
-        trade.counterpartyApproved = false;
     }
 
-    // Cancel the trade
-    function cancelTrade(uint256 _tradeId) external nonReentrant {
+    function cancelTrade(bytes32 _tradeId) external nonReentrant {
         Trade storage trade = trades[_tradeId];
         require(trade.initiator != address(0), "Trade does not exist");
         require(
@@ -233,39 +227,15 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
         feePercentage = _newFeePercentage;
     }
 
-    function getTradesByAddress(
-        address _user
-    ) external view returns (uint256[] memory) {
-        uint256[] memory userTrades = new uint256[](tradeCounter);
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < tradeCounter; i++) {
-            if (
-                trades[i].initiator == _user || trades[i].counterparty == _user
-            ) {
-                userTrades[count] = i;
-                count++;
-            }
-        }
-
-        // 結果の配列をトリミング
-        uint256[] memory result = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            result[i] = userTrades[i];
-        }
-
-        return result;
+    function getTrade(bytes32 _tradeId) external view returns (Trade memory) {
+        return trades[_tradeId];
     }
 
-    function getTradeStatus(
-        uint256 _tradeId
-    ) external view returns (TradeStatus) {
-        Trade storage trade = trades[_tradeId];
+    function getTradesByAddress(address _user) external view returns (bytes32[] memory) {
+        return userTrades[_user];
+    }
 
-        if (trade.initiator == address(0)) {
-            return TradeStatus.NonExistent;
-        }
-
+    function getTradeStatus(bytes32 _tradeId) external view returns (TradeStatus) {
         return tradeStatus[_tradeId];
     }
 }

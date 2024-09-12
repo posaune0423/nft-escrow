@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract ReentrancyAttacker is IERC721Receiver {
     FlexibleEscrow public escrow;
     uint256 public attackCount;
-    uint256 public tradeId;
+    bytes32 public tradeId; // uint256からbytes32に変更
     IERC20 public token;
     bool public attackSucceeded;
 
@@ -17,7 +17,7 @@ contract ReentrancyAttacker is IERC721Receiver {
         token = IERC20(_token);
     }
 
-    function attack(uint256 _tradeId) external {
+    function attack(bytes32 _tradeId) external { // uint256からbytes32に変更
         tradeId = _tradeId;
         token.approve(address(escrow), type(uint256).max);
         escrow.approveTrade(tradeId);
@@ -31,10 +31,8 @@ contract ReentrancyAttacker is IERC721Receiver {
     ) public override returns (bytes4) {
         attackCount++;
         try escrow.approveTrade(tradeId) {
-            // 攻撃が成功した場合（ここには到達しないはず）
             attackSucceeded = true;
         } catch {
-            // 攻撃が失敗した場合（期待される結果）
             attackSucceeded = false;
         }
         return this.onERC721Received.selector;
