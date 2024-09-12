@@ -1,7 +1,7 @@
-import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { Button } from "./ui/button";
 import { extractError } from "@/utils";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CONTRACT_ADDRESS } from "@/constants/contract";
 import { getNetworkFromChainId } from "@/utils";
@@ -11,20 +11,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { erc721ABI, escrowABI } from "@/constants/abi";
 import { TokenType } from "@/types";
 import { Check, Loader2, X } from "lucide-react";
+import { useTradeStore } from "@/providers/tradeStoreProvider";
 
-export const InitiateTradeButton = ({
-  chainId,
-  selectedNfts,
-  counterPartyAddress,
-  setStep,
-}: {
-  chainId: number;
-  selectedNfts: (OwnedNft | Nft)[];
-  counterPartyAddress: Address;
-  setStep: (step: number) => void;
-}) => {
+export const InitiateTradeButton = ({ setStep }: { setStep: Dispatch<SetStateAction<number>> }) => {
+  const { selectedNfts, counterPartyAddress } = useTradeStore((state) => ({
+    selectedNfts: state.selectedNfts,
+    counterPartyAddress: state.counterPartyAddress,
+  }));
+
+  const chainId = useChainId();
   const escrowAddress = useMemo(() => CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!, [chainId]);
-
   const {
     data: approveHash,
     writeContract: writeApprove,
@@ -157,7 +153,7 @@ export const InitiateTradeButton = ({
 
   return (
     <>
-      <Button onClick={handleCreateTrade} className="w-2/3" disabled={isApprovePending || isTradePending}>
+      <Button onClick={handleCreateTrade} className="w-full" disabled={isApprovePending || isTradePending}>
         取引の作成
       </Button>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

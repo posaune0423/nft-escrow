@@ -5,6 +5,7 @@ import { WagmiProvider } from "wagmi";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { APP_NAME, supportedChains } from "@/constants";
 import { Toaster } from "@/components/ui/sonner";
+import { TradeStoreProvider } from "@/providers/tradeStoreProvider";
 
 const config = getDefaultConfig({
   appName: APP_NAME,
@@ -27,7 +28,7 @@ export const Providers = ({ children }: { children: React.ReactNode }) => {
             borderRadius: "medium",
           })}
         >
-          {children}
+          <TradeStoreProvider>{children}</TradeStoreProvider>
           <Toaster position="top-right" closeButton richColors />
         </RainbowKitProvider>
       </QueryClientProvider>
