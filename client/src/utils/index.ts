@@ -124,3 +124,8 @@ export function parseNftUrl(url: string): { contractAddress: string; tokenId: st
     return null;
   }
 }
+
+export const explorerLink = (address: string, chainId: number) => {
+  const network = getNetworkFromChainId(chainId);
+  return `https://${network}.etherscan.io/address/${address}`;
+};

@@ -9,3 +9,23 @@ export interface Asset {
   tokenId: string;
   amount: string;
 }
+
+export interface Trade {
+  initiator: string;
+  counterParty: string;
+  initiatorAsset: {
+    tokenType: number;
+    tokenAddress: string;
+    tokenId: number;
+    amount: number;
+  };
+  counterPartyAsset: {
+    tokenType: number;
+    tokenAddress: string;
+    tokenId: number;
+    amount: number;
+  };
+  initiatorApproved: boolean;
+  counterPartyApproved: boolean;
+  status: string;
+}

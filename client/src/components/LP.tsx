@@ -1,6 +1,6 @@
 import { APP_NAME } from "@/constants";
 import { Button } from "./ui/button";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 
 export const LP = () => {
   return (
@@ -21,7 +21,7 @@ export const LP = () => {
       </div>
 
       <Button className="w-full h-16 text-lg rounded-3xl" size="lg">
-        <Link to="/trade">交換を始める 👈🏻</Link>
+        <Link href="/trade">交換を始める 👈🏻</Link>
       </Button>
     </main>
   );
