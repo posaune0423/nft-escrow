@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const LP = () => {
   return (
-    <main className="flex flex-col justify-between p-4 max-w-md mx-auto min-h-[calc(100dvh-180px)] space-y-4 md:space-y-6">
+    <main className="flex flex-col justify-between p-4 max-w-md mx-auto min-h-[calc(100dvh-180px)] space-y-6 md:space-y-2">
       <h1 className="text-6xl font-bold text-primary font-delaGothicOne mx-auto">{APP_NAME}</h1>
 
       <div className="bg-white text-slate-900 px-8 py-10 rounded-lg shadow-xl border">
