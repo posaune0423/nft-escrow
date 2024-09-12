@@ -51,6 +51,8 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
     mapping(address => mapping(uint256 => bool)) public isNFTInEscrow;
     mapping(bytes32 => TradeStatus) public tradeStatus;
 
+    mapping(address => bytes32[]) public userTrades;
+
     event TradeInitiated(
         bytes32 tradeId,
         address initiator,
@@ -90,6 +92,9 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
             initiatorApproved: true,
             counterpartyApproved: false
         });
+
+        userTrades[msg.sender].push(tradeId);
+        userTrades[_counterparty].push(tradeId);
 
         emit TradeInitiated(tradeId, msg.sender, _counterparty);
         tradeStatus[tradeId] = TradeStatus.Initiated;
@@ -224,6 +229,10 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
 
     function getTrade(bytes32 _tradeId) external view returns (Trade memory) {
         return trades[_tradeId];
+    }
+
+    function getTradesByAddress(address _user) external view returns (bytes32[] memory) {
+        return userTrades[_user];
     }
 
     function getTradeStatus(bytes32 _tradeId) external view returns (TradeStatus) {
