@@ -4,8 +4,6 @@ import { Alchemy } from "alchemy-sdk";
 export async function GET(request: Request, { params }: { params: { chainId: string; ownerAddress: string } }) {
   const { chainId, ownerAddress } = params;
 
-  console.log(chainId, ownerAddress);
-
   if (!chainId || !ownerAddress) {
     return Response.json({ error: "Missing chainId or ownerAddress" }, { status: 400 });
   }
@@ -20,8 +18,6 @@ export async function GET(request: Request, { params }: { params: { chainId: str
   };
 
   const alchemy = new Alchemy(settings);
-
-  console.log(settings);
 
   try {
     const { ownedNfts } = await alchemy.nft.getNftsForOwner(ownerAddress);

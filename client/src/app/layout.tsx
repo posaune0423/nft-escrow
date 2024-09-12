@@ -1,7 +1,7 @@
 import "./globals.scss";
 import "@rainbow-me/rainbowkit/styles.css";
 
-import { APP_NAME } from "@/constants";
+import { APP_DESCRIPTION, APP_NAME } from "@/constants";
 import { Noto_Sans_JP } from "next/font/google";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -12,7 +12,7 @@ const noto_sans_jp = Noto_Sans_JP({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: APP_NAME,
+  description: APP_DESCRIPTION,
 };
 
 export const viewport: Viewport = {

@@ -7,8 +7,6 @@ export async function GET(
 ) {
   const { chainId, contractAddress, tokenId } = params;
 
-  console.log(contractAddress, tokenId);
-
   if (!contractAddress || !tokenId) {
     return Response.json({ error: "Missing contractAddress or tokenId" }, { status: 400 });
   }

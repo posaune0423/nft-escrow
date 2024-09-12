@@ -120,7 +120,7 @@ export const Step2 = () => {
           <div className="flex items-center space-x-2">
             <Label htmlFor="nft" className="flex items-center">
               <RadioGroupItem value="NFT" id="nft" />
-              <span className="ml-2">NFT</span>
+              <span className="ml-2">NFT(ERC721)</span>
             </Label>
           </div>
           <div className="flex items-center space-x-2">
