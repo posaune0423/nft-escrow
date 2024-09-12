@@ -234,7 +234,7 @@ const Step2 = ({
         {exchangeType === "NFT" ? (
           <>
             <Label htmlFor="nftUrl">
-              Marketplace URL (OpenSea, Rarible, Moor等)
+              URL(OpenSea, Rarible, Moor等)から自動入力
               <Input
                 id="nftUrl"
                 placeholder="NFT URL"
