@@ -3,14 +3,14 @@ export const escrowABI = [
   {
     type: "function",
     name: "approveTrade",
-    inputs: [{ name: "tradeId", type: "uint256", internalType: "uint256" }],
+    inputs: [{ name: "tradeId", type: "bytes32", internalType: "bytes32" }],
     outputs: [],
     stateMutability: "nonpayable",
   },
   {
     type: "function",
     name: "cancelTrade",
-    inputs: [{ name: "_tradeId", type: "uint256", internalType: "uint256" }],
+    inputs: [{ name: "_tradeId", type: "bytes32", internalType: "bytes32" }],
     outputs: [],
     stateMutability: "nonpayable",
   },
@@ -23,8 +23,49 @@ export const escrowABI = [
   },
   {
     type: "function",
+    name: "getTrade",
+    inputs: [{ name: "_tradeId", type: "bytes32", internalType: "bytes32" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        internalType: "struct FlexibleEscrow.Trade",
+        components: [
+          { name: "initiator", type: "address", internalType: "address" },
+          { name: "counterparty", type: "address", internalType: "address" },
+          {
+            name: "initiatorAsset",
+            type: "tuple",
+            internalType: "struct FlexibleEscrow.Asset",
+            components: [
+              { name: "tokenType", type: "uint8", internalType: "enum FlexibleEscrow.TokenType" },
+              { name: "tokenAddress", type: "address", internalType: "address" },
+              { name: "tokenId", type: "uint256", internalType: "uint256" },
+              { name: "amount", type: "uint256", internalType: "uint256" },
+            ],
+          },
+          {
+            name: "counterpartyAsset",
+            type: "tuple",
+            internalType: "struct FlexibleEscrow.Asset",
+            components: [
+              { name: "tokenType", type: "uint8", internalType: "enum FlexibleEscrow.TokenType" },
+              { name: "tokenAddress", type: "address", internalType: "address" },
+              { name: "tokenId", type: "uint256", internalType: "uint256" },
+              { name: "amount", type: "uint256", internalType: "uint256" },
+            ],
+          },
+          { name: "initiatorApproved", type: "bool", internalType: "bool" },
+          { name: "counterpartyApproved", type: "bool", internalType: "bool" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "getTradeStatus",
-    inputs: [{ name: "_tradeId", type: "uint256", internalType: "uint256" }],
+    inputs: [{ name: "_tradeId", type: "bytes32", internalType: "bytes32" }],
     outputs: [{ name: "", type: "uint8", internalType: "enum FlexibleEscrow.TradeStatus" }],
     stateMutability: "view",
   },
@@ -32,7 +73,7 @@ export const escrowABI = [
     type: "function",
     name: "getTradesByAddress",
     inputs: [{ name: "_user", type: "address", internalType: "address" }],
-    outputs: [{ name: "", type: "uint256[]", internalType: "uint256[]" }],
+    outputs: [{ name: "", type: "bytes32[]", internalType: "bytes32[]" }],
     stateMutability: "view",
   },
   {
@@ -63,7 +104,7 @@ export const escrowABI = [
         ],
       },
     ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "nonpayable",
   },
   {
@@ -104,22 +145,15 @@ export const escrowABI = [
   },
   {
     type: "function",
-    name: "tradeCounter",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
     name: "tradeStatus",
-    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     outputs: [{ name: "", type: "uint8", internalType: "enum FlexibleEscrow.TradeStatus" }],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "trades",
-    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     outputs: [
       { name: "initiator", type: "address", internalType: "address" },
       { name: "counterparty", type: "address", internalType: "address" },
@@ -151,10 +185,20 @@ export const escrowABI = [
     stateMutability: "view",
   },
   {
+    type: "function",
+    name: "userTrades",
+    inputs: [
+      { name: "", type: "address", internalType: "address" },
+      { name: "", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    stateMutability: "view",
+  },
+  {
     type: "event",
     name: "TradeApproved",
     inputs: [
-      { name: "tradeId", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "tradeId", type: "bytes32", indexed: false, internalType: "bytes32" },
       { name: "approver", type: "address", indexed: false, internalType: "address" },
     ],
     anonymous: false,
@@ -162,20 +206,20 @@ export const escrowABI = [
   {
     type: "event",
     name: "TradeCancelled",
-    inputs: [{ name: "tradeId", type: "uint256", indexed: false, internalType: "uint256" }],
+    inputs: [{ name: "tradeId", type: "bytes32", indexed: false, internalType: "bytes32" }],
     anonymous: false,
   },
   {
     type: "event",
     name: "TradeCompleted",
-    inputs: [{ name: "tradeId", type: "uint256", indexed: false, internalType: "uint256" }],
+    inputs: [{ name: "tradeId", type: "bytes32", indexed: false, internalType: "bytes32" }],
     anonymous: false,
   },
   {
     type: "event",
     name: "TradeInitiated",
     inputs: [
-      { name: "tradeId", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "tradeId", type: "bytes32", indexed: false, internalType: "bytes32" },
       { name: "initiator", type: "address", indexed: false, internalType: "address" },
       { name: "counterparty", type: "address", indexed: false, internalType: "address" },
     ],

@@ -9,6 +9,7 @@ import { escrowABI } from "@/constants/abi";
 import { CONTRACT_ADDRESS } from "@/constants/contract";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { type Address, toHex } from "viem";
 
 const mockTrade: Trade = {
   initiator: "0xaeaA81651c45b9AdBaB705Bd255a53594E92B1E1",
@@ -89,30 +90,36 @@ export const TradeDetailPage = () => {
   const { data: cancelTradeReceipt } = useWaitForTransactionReceipt({ hash: cancelTradeHash });
 
   const handleApproveTrade = useCallback(() => {
+    if (!tradeId) {
+      return;
+    }
     try {
       writeApproveTrade({
         abi: escrowABI,
         address: escrowAddress,
         functionName: "approveTrade",
-        args: [1n],
+        args: [toHex(tradeId) as Address],
       });
     } catch (error) {
       console.error("承認に失敗しました:", error);
     }
-  }, [writeApproveTrade, escrowAddress]);
+  }, [writeApproveTrade, escrowAddress, tradeId]);
 
   const handleCancelTrade = useCallback(() => {
+    if (!tradeId) {
+      return;
+    }
     try {
       writeCancelTrade({
         abi: escrowABI,
         address: escrowAddress,
         functionName: "cancelTrade",
-        args: [1n],
+        args: [toHex(tradeId) as Address],
       });
     } catch (error) {
       console.error("取引のキャンセルに失敗しました:", error);
     }
-  }, [writeCancelTrade, escrowAddress]);
+  }, [writeCancelTrade, escrowAddress, tradeId]);
 
   const alchemy = useMemo(
     () =>
@@ -250,11 +257,11 @@ export const TradeDetailPage = () => {
                 </p>
                 {address === trade.initiator ? (
                   trade.initiatorApproved ? (
-                    <Button onClick={handleCancelTrade} disabled={isCancelTradePending}>
+                    <Button onClick={handleCancelTrade} disabled={isCancelTradePending} className="h-14">
                       キャンセル
                     </Button>
                   ) : (
-                    <Button onClick={handleApproveTrade} disabled={isApproveTradePending}>
+                    <Button onClick={handleApproveTrade} disabled={isApproveTradePending} className="h-14">
                       承認
                     </Button>
                   )
@@ -269,11 +276,11 @@ export const TradeDetailPage = () => {
                 </p>
                 {address === trade.counterParty ? (
                   trade.counterPartyApproved ? (
-                    <Button onClick={handleCancelTrade} disabled={isCancelTradePending}>
+                    <Button onClick={handleCancelTrade} disabled={isCancelTradePending} className="h-14">
                       キャンセル
                     </Button>
                   ) : (
-                    <Button onClick={handleApproveTrade} disabled={isApproveTradePending}>
+                    <Button onClick={handleApproveTrade} disabled={isApproveTradePending} className="h-14">
                       承認
                     </Button>
                   )
