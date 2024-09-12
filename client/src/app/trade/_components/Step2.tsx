@@ -134,21 +134,21 @@ export const Step2 = () => {
         {exchangeType === "NFT" ? (
           <>
             <Label htmlFor="nftUrl">
-              URL(OpenSea, Rarible, Moor等)から自動入力
+              <p className="mb-2">URL(OpenSea, Rarible, Moor等)から自動入力</p>
               <Input id="nftUrl" placeholder="NFT URL" value={nftUrl} onChange={(e) => setNftUrl(e.target.value)} />
             </Label>
             <Label htmlFor="contractAddress">
-              Contract Address
+              <p className="mb-2">コントラクトアドレス</p>
               <Input
                 id="contractAddress"
-                placeholder="Contract Address"
+                placeholder="0x0..."
                 value={contractAddress}
                 onChange={(e) => setContractAddress(e.target.value)}
               />
             </Label>
             <Label htmlFor="tokenId">
-              Token ID
-              <Input id="tokenId" placeholder="Token ID" value={tokenId} onChange={(e) => setTokenId(e.target.value)} />
+              <p className="mb-2">トークンID</p>
+              <Input id="tokenId" placeholder="トークンID" value={tokenId} onChange={(e) => setTokenId(e.target.value)} />
             </Label>
           </>
         ) : (
@@ -157,7 +157,7 @@ export const Step2 = () => {
               <p className="mb-2">コントラクトアドレス</p>
               <Input
                 id="contractAddress"
-                placeholder="Contract Address"
+                placeholder="0x0..."
                 value={contractAddress}
                 onChange={(e) => setContractAddress(e.target.value)}
               />
@@ -166,7 +166,7 @@ export const Step2 = () => {
               <p className="mb-2">送金量</p>
               <Input
                 id="amount"
-                placeholder="Amount"
+                placeholder="200"
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
