@@ -22,7 +22,7 @@ export const ApproveStatus = ({ chainId, trade, tradeId, escrowAddress }: Approv
     <div className="flex flex-col space-y-8">
       <div className="flex flex-col space-y-3">
         <p className="flex items-center space-x-2">
-          <strong>Initiator:</strong>{" "}
+          <strong>発行者:</strong>{" "}
           <Link href={explorerLink(trade.initiator, chainId)} className="text-blue-500">
             {truncateAddress(trade.initiator, 10)}
           </Link>
@@ -37,7 +37,7 @@ export const ApproveStatus = ({ chainId, trade, tradeId, escrowAddress }: Approv
       </div>
       <div className="flex flex-col space-y-3">
         <p className="flex items-center space-x-2">
-          <strong>CounterParty:</strong>{" "}
+          <strong>受信者:</strong>{" "}
           <Link href={explorerLink(trade.counterParty, chainId)} className="text-blue-500">
             {truncateAddress(trade.counterParty, 10)}
           </Link>

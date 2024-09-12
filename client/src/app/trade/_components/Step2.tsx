@@ -98,7 +98,7 @@ export const Step2 = () => {
 
   return (
     <div className="flex flex-col items-center justify-center px-4 space-y-4">
-      <h2 className="text-2xl font-bold">交換条件を入力してください</h2>
+      <h2 className="text-xl md:text-2xl font-bold">交換条件を入力してください</h2>
 
       <Image
         src={
@@ -115,54 +115,58 @@ export const Step2 = () => {
 
       <hr className="w-full border-gray-200 my-6" />
 
-      <div className="w-full max-w-md space-y-4 flex flex-col">
-        <RadioGroup defaultValue="NFT" onValueChange={(value) => setExchangeType(value as "NFT" | "FT")}>
+      <div className="w-full max-w-md space-y-6 flex flex-col">
+        <RadioGroup defaultValue={exchangeType} onValueChange={(value) => setExchangeType(value as "NFT" | "FT")}>
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="NFT" id="nft" />
-            <Label htmlFor="nft">NFT</Label>
+            <Label htmlFor="nft" className="flex items-center">
+              <RadioGroupItem value="NFT" id="nft" />
+              <span className="ml-2">NFT(ERC721)</span>
+            </Label>
           </div>
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="FT" id="ft" />
-            <Label htmlFor="ft">FT (ERC20)</Label>
+            <Label htmlFor="ft" className="flex items-center">
+              <RadioGroupItem value="FT" id="ft" />
+              <span className="ml-2">FT (ERC20)</span>
+            </Label>
           </div>
         </RadioGroup>
 
         {exchangeType === "NFT" ? (
           <>
             <Label htmlFor="nftUrl">
-              URL(OpenSea, Rarible, Moor等)から自動入力
+              <p className="mb-2">URL(OpenSea, Rarible, Moor等)から自動入力</p>
               <Input id="nftUrl" placeholder="NFT URL" value={nftUrl} onChange={(e) => setNftUrl(e.target.value)} />
             </Label>
             <Label htmlFor="contractAddress">
-              Contract Address
+              <p className="mb-2">コントラクトアドレス</p>
               <Input
                 id="contractAddress"
-                placeholder="Contract Address"
+                placeholder="0x0..."
                 value={contractAddress}
                 onChange={(e) => setContractAddress(e.target.value)}
               />
             </Label>
             <Label htmlFor="tokenId">
-              Token ID
-              <Input id="tokenId" placeholder="Token ID" value={tokenId} onChange={(e) => setTokenId(e.target.value)} />
+              <p className="mb-2">トークンID</p>
+              <Input id="tokenId" placeholder="トークンID" value={tokenId} onChange={(e) => setTokenId(e.target.value)} />
             </Label>
           </>
         ) : (
           <>
             <Label htmlFor="contractAddress">
-              Contract Address
+              <p className="mb-2">コントラクトアドレス</p>
               <Input
                 id="contractAddress"
-                placeholder="Contract Address"
+                placeholder="0x0..."
                 value={contractAddress}
                 onChange={(e) => setContractAddress(e.target.value)}
               />
             </Label>
             <Label htmlFor="amount">
-              Amount
+              <p className="mb-2">送金量</p>
               <Input
                 id="amount"
-                placeholder="Amount"
+                placeholder="200"
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -205,10 +209,10 @@ export const Step2 = () => {
         ) : null}
 
         <Label htmlFor="counterPartyAddress">
-          相手のウォレットアドレス
+          <p className="mb-2">相手のウォレットアドレス</p>
           <Input
             id="counterPartyAddress"
-            placeholder="相手のウォレトアドレス"
+            placeholder="相手のウォレットアドレス"
             value={counterPartyAddress}
             onChange={(e) => setCounterPartyAddress(e.target.value as Address)}
           />

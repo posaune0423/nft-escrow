@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getNftsForOwner } from "@/libs/api";
 import { useTradeStore } from "@/providers/tradeStoreProvider";
+import { cn } from "@/utils";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { useMemo, useState } from "react";
@@ -54,7 +55,12 @@ export const Step1 = () => {
           {filteredNfts?.map((nft) => (
             <div
               key={`${nft.contract.address}-${nft.tokenId}`}
-              className="flex justify-center cursor-pointer hover:opacity-80 transition-opacity hover:border-[2px] hover:border-primary rounded-lg"
+              className={cn(
+                "flex justify-center cursor-pointer hover:opacity-80 transition-opacity rounded-lg",
+                selectedNfts[0]?.contract.address === nft.contract.address &&
+                  selectedNfts[0]?.tokenId === nft.tokenId &&
+                  "border-2 border-primary"
+              )}
               onClick={() => {
                 selectedNfts[0] = nft;
                 setSelectedNfts(selectedNfts);

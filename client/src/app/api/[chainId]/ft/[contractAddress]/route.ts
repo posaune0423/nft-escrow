@@ -19,7 +19,6 @@ export async function GET(request: Request, { params }: { params: { chainId: str
   };
 
   const alchemy = new Alchemy(settings);
-  console.log(alchemy);
 
   try {
     // SOMEHOW THIS IS NOT WORKING FOR NOW

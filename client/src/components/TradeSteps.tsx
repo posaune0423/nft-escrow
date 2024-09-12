@@ -46,7 +46,7 @@ export const TradeSteps: React.FC<TradeStepsProps> = ({ children }) => {
         <div className="flex justify-between space-x-4 mt-4 p-4 fixed bottom-0 left-0 right-0 bg-white/80">
           <BackButton setStep={back} disabled={step === 1} />
           {step !== 3 && (
-            <Button onClick={next} className="w-full" disabled={selectedNfts.length === 0}>
+            <Button onClick={next} className="w-full" disabled={selectedNfts.length < step}>
               次へ
             </Button>
           )}
