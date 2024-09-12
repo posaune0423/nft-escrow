@@ -8,10 +8,11 @@ import { TradePage } from "./app/trade";
 import { TermsOfServicePage } from "./app/terms-of-service";
 import { getDefaultConfig, RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { mainnet, optimism, arbitrum, base, polygon } from "wagmi/chains";
+import { polygonAmoy } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { APP_NAME } from "./constants";
 import { Toaster } from "./components/ui/sonner";
+import { TradeDetailPage } from "./app/trade/detail";
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
     element: <TradePage />,
   },
   {
+    path: "/trade/:tradeId",
+    element: <TradeDetailPage />,
+  },
+  {
     path: "/terms-of-service",
     element: <TermsOfServicePage />,
   },
@@ -31,7 +36,8 @@ const router = createBrowserRouter([
 const config = getDefaultConfig({
   appName: APP_NAME,
   projectId: "YOUR_PROJECT_ID",
-  chains: [polygon, optimism, arbitrum, base, mainnet],
+  // chains: [polygon, optimism, arbitrum, base, mainnet],
+  chains: [polygonAmoy],
 });
 
 const queryClient = new QueryClient();

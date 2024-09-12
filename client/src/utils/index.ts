@@ -89,7 +89,38 @@ export function getNetworkFromChainId(chainId: number): Network {
   }
 }
 
-export const extractError = (errorText: string) => {
-  const detailsMatch = errorText.match(/Details:\s*(.*?)(?:\n|$)/);
-  return detailsMatch ? detailsMatch[1].trim() : null;
+export const truncateAddress = (address: string, length: number = 4) => {
+  const truncateRegex = new RegExp(`^(0x[a-zA-Z0-9]{${length}})[a-zA-Z0-9]+([a-zA-Z0-9]{${length}})$`);
+  const match = address.match(truncateRegex);
+  if (!match || match.length < 3) return address;
+  const part1 = match[1] || "";
+  const part2 = match[2] || "";
+  return `0x${part1}…${part2}`;
 };
+
+export const extractError = (error: unknown) => {
+  const errorText = error instanceof Error ? error.message : String(error);
+  const detailsMatch = errorText.match(/Details:\s*(.*?)(?:\n|$)/);
+  return detailsMatch ? detailsMatch[1].trim() : "予期せぬエラーが発生しました";
+};
+
+export function parseNftUrl(url: string): { contractAddress: string; tokenId: string } | null {
+  try {
+    const parsedUrl = new URL(url);
+    const pathParts = parsedUrl.pathname.split("/").filter((part) => part !== "");
+
+    // 最後の2つの部分を取得
+    const contractAddress = pathParts[pathParts.length - 2];
+    const tokenId = pathParts[pathParts.length - 1];
+
+    // contractAddressが16進数形式で、tokenIdが存在する場合に結果を返す
+    if (contractAddress && tokenId && /^0x[a-fA-F0-9]+$/.test(contractAddress)) {
+      return { contractAddress, tokenId };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Failed to parse NFT URL:", error);
+    return null;
+  }
+}

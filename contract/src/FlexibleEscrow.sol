@@ -180,6 +180,11 @@ contract FlexibleEscrow is ReentrancyGuard, IERC721Receiver {
                 !isNFTInEscrow[_asset.tokenAddress][_asset.tokenId],
                 "NFT is already in escrow"
             );
+            require(
+                nft.getApproved(_asset.tokenId) == address(this) ||
+                    nft.isApprovedForAll(_from, address(this)),
+                "Contract is not approved to transfer this NFT"
+            );
             nft.safeTransferFrom(_from, address(this), _asset.tokenId);
             isNFTInEscrow[_asset.tokenAddress][_asset.tokenId] = true;
         } else if (_asset.tokenType == TokenType.ERC20) {
