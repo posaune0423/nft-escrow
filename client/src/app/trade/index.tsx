@@ -319,6 +319,7 @@ const Step3 = ({
   counterPartyAddress: Address;
 }) => {
   const chainId = useChainId();
+  const escrowAddress = useMemo(() => CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!, [chainId]);
 
   const {
     data: approveHash,
@@ -344,8 +345,8 @@ const Step3 = ({
   });
 
   const isApproved = useMemo(() => {
-    return approvedAddress === CONTRACT_ADDRESS[getNetworkFromChainId(chainId)];
-  }, [approvedAddress, chainId]);
+    return approvedAddress === escrowAddress;
+  }, [approvedAddress, escrowAddress]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [approveStatus, setApproveStatus] = useState<"idle" | "pending" | "success" | "error">(
@@ -361,14 +362,14 @@ const Step3 = ({
         abi: erc721ABI,
         address: (selectedNfts[0] as OwnedNft | Nft).contract.address as Address,
         functionName: "approve",
-        args: [CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!, BigInt((selectedNfts[0] as OwnedNft | Nft).tokenId)],
+        args: [escrowAddress, BigInt((selectedNfts[0] as OwnedNft | Nft).tokenId)],
       });
     } catch (error) {
       console.error(error);
       setApproveStatus("error");
       toast.error("NFTの承認に失敗しました");
     }
-  }, [writeApprove, chainId, selectedNfts]);
+  }, [writeApprove, chainId, escrowAddress, selectedNfts]);
 
   const handleInitiateTrade = useCallback(() => {
     if (!chainId || !counterPartyAddress || !selectedNfts[0] || !selectedNfts[1]) {
@@ -388,13 +389,13 @@ const Step3 = ({
       tokenId: BigInt((selectedNfts[1] as OwnedNft | Nft).tokenId),
       amount: BigInt(0),
     };
-    console.log({counterPartyAddress,myAsset, counterPartyAsset});
+    console.log({ counterPartyAddress, myAsset, counterPartyAsset });
     try {
       console.log("initiateTrade");
       setTradeStatus("pending");
       writeTrade({
         chainId,
-        address: CONTRACT_ADDRESS[getNetworkFromChainId(chainId)]!,
+        address: escrowAddress,
         abi: escrowABI,
         functionName: "initiateTrade",
         args: [counterPartyAddress, myAsset, counterPartyAsset],
@@ -404,7 +405,7 @@ const Step3 = ({
       setTradeStatus("error");
       toast.error(extractError(error));
     }
-  }, [writeTrade, chainId, counterPartyAddress, selectedNfts]);
+  }, [writeTrade, chainId, escrowAddress, counterPartyAddress, selectedNfts]);
 
   const handleCreateTrade = useCallback(() => {
     setIsDialogOpen(true);

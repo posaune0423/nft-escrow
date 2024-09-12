@@ -12,6 +12,7 @@ import { polygonAmoy } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { APP_NAME } from "./constants";
 import { Toaster } from "./components/ui/sonner";
+import { TradeDetailPage } from "./app/trade/detail";
 
 const router = createBrowserRouter([
   {
@@ -21,6 +22,10 @@ const router = createBrowserRouter([
   {
     path: "/trade",
     element: <TradePage />,
+  },
+  {
+    path: "/trade/:tradeId",
+    element: <TradeDetailPage />,
   },
   {
     path: "/terms-of-service",

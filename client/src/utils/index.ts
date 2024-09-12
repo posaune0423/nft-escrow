@@ -89,6 +89,15 @@ export function getNetworkFromChainId(chainId: number): Network {
   }
 }
 
+export const truncateAddress = (address: string, length: number = 4) => {
+  const truncateRegex = new RegExp(`^(0x[a-zA-Z0-9]{${length}})[a-zA-Z0-9]+([a-zA-Z0-9]{${length}})$`);
+  const match = address.match(truncateRegex);
+  if (!match || match.length < 3) return address;
+  const part1 = match[1] || "";
+  const part2 = match[2] || "";
+  return `0x${part1}…${part2}`;
+};
+
 export const extractError = (error: unknown) => {
   const errorText = error instanceof Error ? error.message : String(error);
   const detailsMatch = errorText.match(/Details:\s*(.*?)(?:\n|$)/);
