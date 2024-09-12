@@ -2,6 +2,9 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Network } from "alchemy-sdk";
 
+export const isPrd = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
+export const isStg = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF === "staging";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -124,3 +127,24 @@ export function parseNftUrl(url: string): { contractAddress: string; tokenId: st
     return null;
   }
 }
+
+export const explorerLink = (address: string, chainId: number) => {
+  const network = getNetworkFromChainId(chainId);
+  return `https://${network}.etherscan.io/address/${address}`;
+};
+
+export const getBaseUrl = () => {
+  if (
+    (isPrd ||
+      (process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" &&
+        (isStg || process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF === "release"))) &&
+    process.env.NEXT_PUBLIC_DOMAIN_TLD
+  ) {
+    return `https://${process.env.NEXT_PUBLIC_DOMAIN_TLD}`;
+  } else if (process.env.NEXT_PUBLIC_VERCEL_ENV == "preview" && process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL) {
+    return `https://${process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL}`;
+  } else if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+    return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+  }
+  return `http://localhost:${process.env.NEXT_PUBLIC_PORT ?? 3000}`;
+};
