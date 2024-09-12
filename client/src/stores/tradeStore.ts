@@ -26,7 +26,7 @@ export type TradeStore = TradeState & TradeActions;
 
 const defaultInitState: TradeState = {
   selectedNfts: [],
-  counterPartyAddress: "0x64473e07c7A53a632DDE287CA2e6c3c1aC15Af29",
+  counterPartyAddress: "0x",
   exchangeType: "NFT",
   contractAddress: "",
   tokenId: "",

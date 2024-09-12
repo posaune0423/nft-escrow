@@ -20,7 +20,7 @@ export const LP = () => {
         <p className="text-lg md:text-xl font-semibold">スムーズで安心な個人間取引を。</p>
       </div>
 
-      <Button className="w-full h-15 text-md rounded-3xl" size="lg">
+      <Button className="w-full h-14 text-md rounded-3xl" size="lg">
         <Link href="/trade">交換を始める 👈🏻</Link>
       </Button>
     </main>
